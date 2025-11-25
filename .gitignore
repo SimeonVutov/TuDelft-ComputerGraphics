@@ -37,5 +37,27 @@
 *.out
 *.app
 
-# debug information files
+# Debug information files
 *.dwo
+
+# CMake Build Directory
+build/
+
+# Clangd / Neovim Cache
+# This is where the language server stores indexing data.
+.cache/
+
+# Compilation Database
+# This tells Neovim where headers are. It contains absolute paths 
+compile_commands.json
+
+# Ninja build logs (since you are using Ninja)
+.ninja_deps
+.ninja_log
+
+# ImGui Layout storage
+# Ignore this so moving windows doesn't create git changes.
+# imgui.ini
+
+# Mac/Linux folder config junk
+.DS_Store
