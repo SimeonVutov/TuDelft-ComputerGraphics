@@ -13,9 +13,12 @@ jobs:
     steps:
     - name: Install System Dependencies
       run: |
-        pacman -Syu --noconfirm
+        pacman -Sy --noconfirm archlinux-keyring
+        
+        pacman -Su --noconfirm
+        
         pacman -S --noconfirm base-devel cmake ninja git
-        pacman -S --noconfirm mesa libglvnd libx11 libxrandr libxinerama libxcursor libxi glu
+        pacman -S --noconfirm mesa libglvnd libx11 libxrandr libxinerama libxcursor libxi glu freeglut
 
     - name: Checkout Code
       uses: actions/checkout@v4
