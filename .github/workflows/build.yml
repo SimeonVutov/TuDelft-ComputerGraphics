@@ -1,48 +1,20 @@
-name: C++ Build Check
-
-on:
-  pull_request:
-    branches: [ "main" ]
-
-jobs:
-  arch_build:
+arch_build:
     name: Arch Linux (Ninja)
     runs-on: ubuntu-latest
     container: archlinux:latest
-
     steps:
-      - name: Initialize Pacman Keys
-        run: |
-          rm -r /etc/pacman.d/gnupg
-          sudo pacman-key --init
-          sudo pacman-key --populate archlinux
-          sudo pacman -Sy --noconfirm archlinux-keyring
-    - name: System Update
+    - name: Configure System & Install Deps
       run: |
-        pacman -Syu --noconfirm
-
-    - name: Install System Dependencies
-      run: |
-        pacman -S --noconfirm \
-          base-devel \
-          cmake \
-          ninja \
-          git \
-          mesa \
-          libglvnd \
-          glu \
-          freeglut \
-          libx11 \
-          libxrandr \
-          libxinerama \
-          libxcursor \
-          libxi
-
-    - name: Debug GLU Install
-      run: |
-        echo "Checking GLU & GL headers..."
-        pacman -Ql glu || true
-        ls -R /usr/include/GL || true
+        rm -rf /etc/pacman.d/gnupg
+        pacman-key --init
+        pacman-key --populate archlinux
+        
+        pacman -Sy --noconfirm archlinux-keyring
+        pacman -Su --noconfirm
+        
+        pacman -S --noconfirm base-devel cmake ninja git \
+          mesa libglvnd glu freeglut \
+          libx11 libxrandr libxinerama libxcursor libxi
 
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -51,26 +23,25 @@ jobs:
 
     - name: Build All Projects
       shell: bash
+      env:
+        # CRITICAL: Force compiler to look in standard include path
+        # Arch containers sometimes exclude this from the default search path
+        CXXFLAGS: "-I/usr/include" 
       run: |
         echo "Scanning root folders for projects..."
-
         for dir in */; do
             dir=${dir%/}
-
-            # Skip folders
             if [[ "$dir" == "framework" || "$dir" == "third_party" ]]; then
                 continue
             fi
-
-            # Build only folders containing CMakeLists.txt
             if [[ -f "$dir/CMakeLists.txt" ]]; then
                 echo "-----------------------------------------------------"
                 echo " Building Project: $dir"
                 echo "-----------------------------------------------------"
-
+                
                 cmake -S "$dir" -B "$dir/build" -G "Ninja" -DCMAKE_BUILD_TYPE=Release
                 cmake --build "$dir/build"
-
+                
                 echo "$dir Build Success"
             fi
         done
