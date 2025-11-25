@@ -1,2 +1,4 @@
 **/framework/** linguist-vendored
 **/third_party/** linguist-vendored
+
+*.html linguist-documentation
