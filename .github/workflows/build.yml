@@ -63,23 +63,27 @@ jobs:
       shell: powershell
       run: |
         Write-Host "Scanning root folders for projects..."
-        # Get all folders in the root directory
         $folders = Get-ChildItem -Directory
         foreach ($folder in $folders) {
             $dirName = $folder.Name
-            # 1. Skip framework and third_party folders
+            
             if ($dirName -eq "framework" -or $dirName -eq "third_party") {
                 continue
             }
-            # 2. Check if this folder is actually a CMake project
+            
             if (Test-Path "$dirName\CMakeLists.txt") {
                 Write-Host "-----------------------------------------------------"
                 Write-Host " Building Project: $dirName"
                 Write-Host "-----------------------------------------------------"
-                cmake -S "$dirName" -B "$dirName/build" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+                
+                # CHANGED: Release -> Debug
+                cmake -S "$dirName" -B "$dirName/build" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-                cmake --build "$dirName/build" --config Release
+                
+                # CHANGED: Release -> Debug
+                cmake --build "$dirName/build" --config Debug
                 if ($LASTEXITCODE -ne 0) { exit 1 }
+                
                 Write-Host "$dirName Build Complete"
             }
         }
