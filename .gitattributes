@@ -2,3 +2,6 @@
 **/third_party/** linguist-vendored
 
 *.html linguist-documentation
+
+#Custom
+practical2/tests/prebuilt/** linguist-vendored
