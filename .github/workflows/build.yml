@@ -22,11 +22,6 @@ jobs:
         pacman -Su --noconfirm
         pacman -S --noconfirm base-devel cmake ninja git mesa libglvnd glu freeglut libx11 libxrandr libxinerama libxcursor libxi
 
-    - name: Verify GLU Header
-      run: |
-        # Debug step to prove the file exists
-        ls -la /usr/include/GL/glu.h
-
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
@@ -34,10 +29,6 @@ jobs:
 
     - name: Build All Projects
       shell: bash
-      env:
-        # CRITICAL: Force compiler to look in standard include path
-        # Arch containers sometimes exclude this from the default search path
-        CXXFLAGS: "-I/usr/include"
       run: |
         echo "Scanning root folders for projects..."
         for dir in */; do
