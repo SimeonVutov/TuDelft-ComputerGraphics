@@ -2,7 +2,7 @@ name: C++ Build Check
 
 on:
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main" ]
 
 jobs:
   arch_build:
@@ -11,7 +11,7 @@ jobs:
     container: archlinux:latest
 
     steps:
-    - name: Update System & Install Dependencies
+    - name: Install System Dependencies
       run: |
         pacman -Syu --noconfirm
         pacman -S --noconfirm base-devel cmake ninja git
@@ -22,11 +22,34 @@ jobs:
       with:
         set-safe-directory: true
 
-    - name: Configure CMake (Ninja)
-      run: cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+    - name: Build All Projects
+      shell: bash
+      run: |
+        echo " Scanning root folders for projects..."
 
-    - name: Compile
-      run: cmake --build build
+        # Loop through every folder in the current directory
+        for dir in */; do
+            # Remove the trailing slash (e.g., "lab1/" -> "lab1")
+            dir=${dir%/}
+
+            # 1. Skip the framework and third_party folders
+            if [[ "$dir" == "framework" || "$dir" == "third_party" ]]; then
+                continue
+            fi
+
+            # 2. Check if this folder is actually a CMake project
+            if [[ -f "$dir/CMakeLists.txt" ]]; then
+                echo "-----------------------------------------------------"
+                echo " Building Project: $dir"
+                echo "-----------------------------------------------------"
+
+                cmake -S "$dir" -B "$dir/build" -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+                
+                cmake --build "$dir/build"
+                
+                echo "$dir Build Success"
+            fi
+        done
 
   windows_build:
     name: Windows (Visual Studio 2022)
@@ -36,9 +59,34 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Configure CMake
-      # Explicitly specify Visual Studio 17 2022 to ensure MSVC compiler is used
-      run: cmake -S . -B build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+    - name: Build All Projects
+      shell: powershell
+      run: |
+        Write-Host "Scanning root folders for projects..."
 
-    - name: Compile
-      run: cmake --build build --config Release
+        # Get all folders in the root directory
+        $folders = Get-ChildItem -Directory
+
+        foreach ($folder in $folders) {
+            $dirName = $folder.Name
+
+            # 1. Skip framework and third_party folders
+            if ($dirName -eq "framework" -or $dirName -eq "third_party") {
+                continue
+            }
+
+            # 2. Check if this folder is actually a CMake project
+            if (Test-Path "$dirName\CMakeLists.txt") {
+                Write-Host "-----------------------------------------------------"
+                Write-Host " Building Project: $dirName"
+                Write-Host "-----------------------------------------------------"
+
+                cmake -S "$dirName" -B "$dirName/build" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+
+                cmake --build "$dirName/build" --config Release
+                if ($LASTEXITCODE -ne 0) { exit 1 }
+
+                Write-Host "$dirName Build Complete"
+            }
+        }
