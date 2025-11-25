@@ -15,7 +15,7 @@ jobs:
       run: |
         pacman -Syu --noconfirm
         pacman -S --noconfirm base-devel cmake ninja git
-        pacman -S --noconfirm mesa libglvnd libx11 libxrandr libxinerama libxcursor libxi
+        pacman -S --noconfirm mesa libglvnd libx11 libxrandr libxinerama libxcursor libxi glu
 
     - name: Checkout Code
       uses: actions/checkout@v4
