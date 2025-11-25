@@ -1,0 +1,44 @@
+name: C++ Build Check
+
+on:
+  pull_request:
+    branches: [ "main", "develop" ]
+
+jobs:
+  arch_build:
+    name: Arch Linux (Ninja)
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+
+    steps:
+    - name: Update System & Install Dependencies
+      run: |
+        pacman -Syu --noconfirm
+        pacman -S --noconfirm base-devel cmake ninja git
+        pacman -S --noconfirm mesa libglvnd libx11 libxrandr libxinerama libxcursor libxi
+
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        set-safe-directory: true
+
+    - name: Configure CMake (Ninja)
+      run: cmake -S . -B build -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+
+    - name: Compile
+      run: cmake --build build
+
+  windows_build:
+    name: Windows (Visual Studio 2022)
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Configure CMake
+      # Explicitly specify Visual Studio 17 2022 to ensure MSVC compiler is used
+      run: cmake -S . -B build -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
+
+    - name: Compile
+      run: cmake --build build --config Release
