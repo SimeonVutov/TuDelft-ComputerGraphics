@@ -11,14 +11,40 @@ jobs:
     container: archlinux:latest
 
     steps:
-    - name: Install System Dependencies
+    - name: Initialize Pacman Keys
       run: |
         pacman-key --init
         pacman-key --populate archlinux
         
+        # Make sure keyring is up-to-date before updating system
         pacman -Sy --noconfirm archlinux-keyring
-        
-        pacman -Syu --noconfirm base-devel cmake ninja git mesa mesa-devel libglvnd libx11 libxrandr libxinerama libxcursor libxi glu freeglut
+
+    - name: System Update
+      run: |
+        pacman -Syu --noconfirm
+
+    - name: Install System Dependencies
+      run: |
+        pacman -S --noconfirm \
+          base-devel \
+          cmake \
+          ninja \
+          git \
+          mesa \
+          libglvnd \
+          glu \
+          freeglut \
+          libx11 \
+          libxrandr \
+          libxinerama \
+          libxcursor \
+          libxi
+
+    - name: Debug GLU Install
+      run: |
+        echo "Checking GLU & GL headers..."
+        pacman -Ql glu || true
+        ls -R /usr/include/GL || true
 
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -28,28 +54,25 @@ jobs:
     - name: Build All Projects
       shell: bash
       run: |
-        echo " Scanning root folders for projects..."
+        echo "Scanning root folders for projects..."
 
-        # Loop through every folder in the current directory
         for dir in */; do
-            # Remove the trailing slash (e.g., "lab1/" -> "lab1")
             dir=${dir%/}
 
-            # 1. Skip the framework and third_party folders
+            # Skip folders
             if [[ "$dir" == "framework" || "$dir" == "third_party" ]]; then
                 continue
             fi
 
-            # 2. Check if this folder is actually a CMake project
+            # Build only folders containing CMakeLists.txt
             if [[ -f "$dir/CMakeLists.txt" ]]; then
                 echo "-----------------------------------------------------"
                 echo " Building Project: $dir"
                 echo "-----------------------------------------------------"
 
                 cmake -S "$dir" -B "$dir/build" -G "Ninja" -DCMAKE_BUILD_TYPE=Release
-                
                 cmake --build "$dir/build"
-                
+
                 echo "$dir Build Success"
             fi
         done
