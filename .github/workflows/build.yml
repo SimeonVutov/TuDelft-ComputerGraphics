@@ -1,4 +1,11 @@
-arch_build:
+name: C++ Build Check
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  arch_build:
     name: Arch Linux (Ninja)
     runs-on: ubuntu-latest
     container: archlinux:latest
@@ -6,15 +13,19 @@ arch_build:
     - name: Configure System & Install Deps
       run: |
         rm -rf /etc/pacman.d/gnupg
+        
         pacman-key --init
         pacman-key --populate archlinux
         
         pacman -Sy --noconfirm archlinux-keyring
-        pacman -Su --noconfirm
         
-        pacman -S --noconfirm base-devel cmake ninja git \
-          mesa libglvnd glu freeglut \
-          libx11 libxrandr libxinerama libxcursor libxi
+        pacman -Su --noconfirm
+        pacman -S --noconfirm base-devel cmake ninja git mesa libglvnd glu freeglut libx11 libxrandr libxinerama libxcursor libxi
+
+    - name: Verify GLU Header
+      run: |
+        # Debug step to prove the file exists
+        ls -la /usr/include/GL/glu.h
 
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -26,14 +37,18 @@ arch_build:
       env:
         # CRITICAL: Force compiler to look in standard include path
         # Arch containers sometimes exclude this from the default search path
-        CXXFLAGS: "-I/usr/include" 
+        CXXFLAGS: "-I/usr/include"
       run: |
         echo "Scanning root folders for projects..."
         for dir in */; do
             dir=${dir%/}
+            
+            # Skip framework and third_party
             if [[ "$dir" == "framework" || "$dir" == "third_party" ]]; then
                 continue
             fi
+            
+            # Check for CMakeLists.txt
             if [[ -f "$dir/CMakeLists.txt" ]]; then
                 echo "-----------------------------------------------------"
                 echo " Building Project: $dir"
@@ -49,7 +64,6 @@ arch_build:
   windows_build:
     name: Windows (Visual Studio 2022)
     runs-on: windows-latest
-
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
@@ -58,30 +72,23 @@ arch_build:
       shell: powershell
       run: |
         Write-Host "Scanning root folders for projects..."
-
         # Get all folders in the root directory
         $folders = Get-ChildItem -Directory
-
         foreach ($folder in $folders) {
             $dirName = $folder.Name
-
             # 1. Skip framework and third_party folders
             if ($dirName -eq "framework" -or $dirName -eq "third_party") {
                 continue
             }
-
             # 2. Check if this folder is actually a CMake project
             if (Test-Path "$dirName\CMakeLists.txt") {
                 Write-Host "-----------------------------------------------------"
                 Write-Host " Building Project: $dirName"
                 Write-Host "-----------------------------------------------------"
-
                 cmake -S "$dirName" -B "$dirName/build" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Release
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-
                 cmake --build "$dirName/build" --config Release
                 if ($LASTEXITCODE -ne 0) { exit 1 }
-
                 Write-Host "$dirName Build Complete"
             }
         }
