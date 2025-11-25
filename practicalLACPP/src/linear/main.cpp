@@ -10,6 +10,7 @@ DISABLE_WARNINGS_PUSH()
 #include <imgui/imgui.h>
 DISABLE_WARNINGS_POP()
 #include <array>
+#include <algorithm>
 #include <cassert>
 #include <filesystem>
 #include <framework/trackball.h>
