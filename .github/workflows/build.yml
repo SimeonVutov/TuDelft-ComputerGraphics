@@ -11,14 +11,12 @@ jobs:
     container: archlinux:latest
 
     steps:
-    - name: Initialize Pacman Keys
-      run: |
-        pacman-key --init
-        pacman-key --populate archlinux
-        
-        # Make sure keyring is up-to-date before updating system
-        pacman -Sy --noconfirm archlinux-keyring
-
+      - name: Initialize Pacman Keys
+        run: |
+          rm -r /etc/pacman.d/gnupg
+          sudo pacman-key --init
+          sudo pacman-key --populate archlinux
+          sudo pacman -Sy --noconfirm archlinux-keyring
     - name: System Update
       run: |
         pacman -Syu --noconfirm
