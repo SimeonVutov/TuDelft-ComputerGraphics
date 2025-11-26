@@ -20,7 +20,7 @@ std::string to_string(const Matrix3& matrix)
 // Multiplication of a vector with a scalar
 glm::vec3 mul(const glm::vec3& lhs, float rhs)
 {
-    glm::vec3 result {};
+    glm::vec3 result {lhs.x * rhs, lhs.y * rhs, lhs.z * rhs};
     // Your solution goes here
     // Do *NOT* use glm functionality here, but implement the multiplication yourself.
     return result;
@@ -32,16 +32,16 @@ float dot3(const glm::vec3& lhs, const glm::vec3& rhs)
     float result;
     // Your solution goes here
     // Do *NOT* use glm::dot here, but implement the dot product yourself.
-    result = 0.0f;
+    result = lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
     return result;
 }
 
 // Cross product of two vectors
 glm::vec3 cross3(const glm::vec3& lhs, const glm::vec3& rhs)
 {
-    glm::vec3 result;
     // Your solution goes here
     // Do *NOT* use glm::cross here, but implement the cross product yourself.
+    glm::vec3 result { lhs.y*rhs.z - rhs.y*lhs.z, lhs.z*rhs.x - rhs.z*lhs.x, lhs.x*rhs.y - rhs.x*lhs.y };
     return result;
 }
 
@@ -51,7 +51,7 @@ float length(const glm::vec3& lhs)
     float result;
     // Your solution goes here
     // Do *NOT* use glm::length here, but implement the length yourself.
-    result = 0.0f;
+    result = glm::sqrt(lhs.x * lhs.x + lhs.y * lhs.y + lhs.z * lhs.z);
     return result;
 }
 
@@ -71,7 +71,9 @@ float length(const glm::vec3& lhs)
 Matrix3 mul(const Matrix3& lhs, float rhs)
 {
     Matrix3 result {};
-    // Your solution goes here
+    result.col1 = mul(lhs.col1, rhs);
+    result.col2 = mul(lhs.col2, rhs);
+    result.col3 = mul(lhs.col3, rhs);
     return result;
 }
 
@@ -87,7 +89,18 @@ Matrix3 mul(const Matrix3& lhs, float rhs)
 Matrix3 transpose(const Matrix3& m)
 {
     Matrix3 result {};
-    // Your solution goes here
+    
+    result.col1.x = m.col1.x;
+    result.col1.y = m.col2.x;
+    result.col1.z = m.col3.x;
+    
+    result.col2.x = m.col1.y;
+    result.col2.y = m.col2.y;
+    result.col2.z = m.col3.y;
+
+    result.col3.x = m.col1.z;
+    result.col3.y = m.col2.z;
+    result.col3.z = m.col3.z;
     return result;
 }
 
@@ -98,8 +111,19 @@ float determinant(const Matrix3& m)
 {
     float result;
     // Your solution goes here
-    result = 0.0f;
+    result = m.col1.x * m.col2.y * m.col3.z +
+             m.col3.x * m.col2.z * m.col1.y +
+             m.col1.z * m.col2.x * m.col3.y -
+
+             m.col1.z * m.col2.y * m.col3.x -
+             m.col1.y * m.col2.x * m.col3.z -
+             m.col1.x * m.col2.z * m.col3.y;
     return result;
+}
+
+// Custom function for helping inverse
+float det2(float a, float b, float c, float d) {
+    return a * d - b * c;
 }
 
 // Computing the inverse of the given matrix. If you implemented it correctly then matrix M multiplied
@@ -118,11 +142,36 @@ Matrix3 inverse(const Matrix3& matrix)
 
     // Step 0: It is probably handy to define a method that computes the determinant of a 2x2 matrix.
     // Step 1: Compute the Matrix of Minors.
+    Matrix3 minors;
+    minors.col1.x = det2(matrix.col2.y, matrix.col3.y, matrix.col2.z, matrix.col3.z);
+    minors.col2.x = det2(matrix.col1.y, matrix.col3.y, matrix.col1.z, matrix.col3.z);
+    minors.col3.x = det2(matrix.col1.y, matrix.col2.y, matrix.col1.z, matrix.col2.z);
+    
+    minors.col1.y = det2(matrix.col2.x, matrix.col3.x, matrix.col2.z, matrix.col3.z);
+    minors.col2.y = det2(matrix.col1.x, matrix.col3.x, matrix.col1.z, matrix.col3.z);
+    minors.col3.y = det2(matrix.col1.x, matrix.col2.x, matrix.col1.z, matrix.col2.z);
+
+    minors.col1.z = det2(matrix.col2.x, matrix.col3.x, matrix.col2.y, matrix.col3.y);
+    minors.col2.z = det2(matrix.col1.x, matrix.col3.x, matrix.col1.y, matrix.col3.y);
+    minors.col3.z = det2(matrix.col1.x, matrix.col2.x, matrix.col1.y, matrix.col2.y);
     // Step 2: Compute the Matrix of Cofactors
+    minors.col2.x *= -1;
+    minors.col1.y *= -1;
+    minors.col3.y *= -1;
+    minors.col2.z *= -1;
     // Step 3: Adjugate the Matrix (Note that you have the transpose available from above).
+    minors = transpose(minors); 
     // Step 4: Multiply by 1/determinant (Note that you have the multiplication available from above).
+    float det = determinant(matrix);
+    
+    if(det == 0.0f) {
+        return Matrix3{};
+    }
+
+    result = mul(minors, 1.0f / det);
     return result;
 }
+
 
 // ==================================
 // ========    Exercise 1    ========
