@@ -29,5 +29,6 @@ enum class MovementCommand : int {
 inline glm::mat3 computeMazeTransformation(std::span<const MovementCommand> moves)
 {
     glm::mat3 out = glm::identity<glm::mat3>();
+
     return out;
 }
