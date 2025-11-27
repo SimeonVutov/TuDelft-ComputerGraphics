@@ -5,6 +5,7 @@
 #include <numeric>
 #include <span>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 // ==================================
@@ -12,8 +13,21 @@
 // ==================================
 std::pair<float, float> statistics(std::span<const float> values)
 {
-    // Your solution goes here
-    return { 123.0f, 456.0f };
+    float mean = 0.0f;
+    for(float v : values) {
+        mean += v;
+    }
+
+    mean /= static_cast<float>(values.size());
+    
+    float std = 0.0f;
+    for(float v : values) {
+        std += (v - mean) * (v - mean);
+    }
+    std /= static_cast<float>(values.size());
+    std = std::sqrt(std);
+
+    return std::pair<float, float> {mean, std};
 }
 
 // ==================================
