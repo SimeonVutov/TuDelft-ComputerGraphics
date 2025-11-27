@@ -13,34 +13,51 @@ jobs:
     - name: Configure System & Install Deps
       run: |
         rm -rf /etc/pacman.d/gnupg
-        
         pacman-key --init
         pacman-key --populate archlinux
-        
         pacman -Sy --noconfirm archlinux-keyring
-        
         pacman -Su --noconfirm
         pacman -S --noconfirm base-devel cmake ninja git mesa libglvnd glu freeglut libx11 libxrandr libxinerama libxcursor libxi
 
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
+        fetch-depth: 0 # IMPORTANT: Required to detect changes against main
         set-safe-directory: true
 
-    - name: Build All Projects
+    - name: Build Modified Projects
       shell: bash
       run: |
-        echo "Scanning root folders for projects..."
+        # 1. Get list of changed files compared to main
+        # The output uses forward slashes (Shading/src/...)
+        CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+        
+        echo "Detected Changes:"
+        echo "$CHANGED_FILES"
+
+        # 2. Check if the CI workflow itself changed. 
+        # If yes, we should build everything to be safe.
+        FORCE_ALL=false
+        if echo "$CHANGED_FILES" | grep -q "^.github/"; then
+          echo "CI Configuration changed. Forcing full build."
+          FORCE_ALL=true
+        fi
+
+        echo "Scanning root folders..."
         for dir in */; do
-            dir=${dir%/}
+            dir=${dir%/} # Remove trailing slash
             
-            # Skip framework and third_party
-            if [[ "$dir" == "framework" || "$dir" == "third_party" ]]; then
-                continue
-            fi
-            
-            # Check for CMakeLists.txt
+            # Check if directory has a CMakeLists.txt
             if [[ -f "$dir/CMakeLists.txt" ]]; then
+            
+                # 3. OPTIMIZATION:
+                # If NOT forcing all, AND no files in this dir changed, SKIP it.
+                # We grep specifically for "^DirectoryName/"
+                if [ "$FORCE_ALL" = false ] && ! echo "$CHANGED_FILES" | grep -q "^$dir/"; then
+                    echo ">> Skipping $dir (No changes detected)"
+                    continue
+                fi
+
                 echo "-----------------------------------------------------"
                 echo " Building Project: $dir"
                 echo "-----------------------------------------------------"
@@ -58,32 +75,47 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # IMPORTANT: Required to detect changes against main
 
-    - name: Build All Projects
+    - name: Build Modified Projects
       shell: powershell
       run: |
-        Write-Host "Scanning root folders for projects..."
+        # 1. Get changed files
+        $changedFiles = git diff --name-only origin/main...HEAD
+        Write-Host "Changed Files:"
+        Write-Host $changedFiles
+
+        # 2. Safety Check: Did .github folder change?
+        $forceAll = ($changedFiles | Select-String "^.github/").Count -gt 0
+        if ($forceAll) { Write-Host "CI Config changed. Forcing full build." -ForegroundColor Yellow }
+
+        Write-Host "Scanning root folders..."
         $folders = Get-ChildItem -Directory
         foreach ($folder in $folders) {
             $dirName = $folder.Name
             
-            if ($dirName -eq "framework" -or $dirName -eq "third_party") {
-                continue
-            }
-            
             if (Test-Path "$dirName\CMakeLists.txt") {
+                
+                # 3. OPTIMIZATION:
+                # Check if Git reported any files starting with "FolderName/"
+                $isModified = ($changedFiles | Select-String "^$dirName/").Count -gt 0
+                
+                if (-not $forceAll -and -not $isModified) {
+                    Write-Host ">> Skipping $dirName (No changes detected)" -ForegroundColor Gray
+                    continue
+                }
+
                 Write-Host "-----------------------------------------------------"
                 Write-Host " Building Project: $dirName"
                 Write-Host "-----------------------------------------------------"
                 
-                # CHANGED: Release -> Debug
                 cmake -S "$dirName" -B "$dirName/build" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 
-                # CHANGED: Release -> Debug
                 cmake --build "$dirName/build" --config Debug
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 
-                Write-Host "$dirName Build Complete"
+                Write-Host "$dirName Build Complete" -ForegroundColor Green
             }
         }
