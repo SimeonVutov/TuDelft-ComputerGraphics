@@ -263,7 +263,27 @@ std::array<glm::vec3, 4> rectangleOnPlane(const Plane& plane)
     // Regarding the visuals: It's really about passing four points that lie on that plane. The rectangles can be tiny, intersect, 
     // be rotated, ... whatever, we don't care. The one thing you should check is that the four points actually lie on the plane 
     // and have the shape of (roughly) a square.
+    
+    glm::vec3 helper;
 
+    if(std::abs(plane.n.x) < std::abs(plane.n.y)) {
+        helper = glm::vec3{1.0f, 0.0f, 0.0f};
+    }
+    else {
+        helper = glm::vec3{0.0f, 1.0f, 0.0f};
+    }
+
+    glm::vec3 oneDir = cross3(helper, plane.n);
+    oneDir = glm::normalize(oneDir);
+
+    glm::vec3 secDir = cross3(plane.n, oneDir);
+    secDir = glm::normalize(secDir);
+    
+    result[0] = plane.p - oneDir - secDir;
+    result[1] = plane.p + oneDir - secDir;
+    result[2] = plane.p + oneDir + secDir;
+    result[3] = plane.p - oneDir + secDir;
+    
     return result;
 }
 
