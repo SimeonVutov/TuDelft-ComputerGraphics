@@ -227,7 +227,7 @@ std::vector<int> orderOfnGonVertices(const std::vector<glm::vec3> nGon)
     std::sort(vertexAngles.begin(), vertexAngles.end(), compareByAngle);
 
     for(const VertexData &v : vertexAngles) {
-        result.push_back(v.index);
+        result.push_back(static_cast<int>(v.index));
     }
     
     return result;
@@ -296,6 +296,67 @@ std::vector<glm::vec3> verticesFromPlanes(std::span<const Plane> planes)
     // - Test whether the system has a solution (you can, e.g., use the determinant for matrices).
     // - If it has a solution, compute it (e.g., via using the inverse matrix).
     // - Assuming that the normal of the plane points to the inside of the solid, test for all other planes whether the computed point of intersection is indeed within the solid.
+
+    size_t n_planes = planes.size();
+
+    for(size_t i = 0; i < n_planes; i++) {
+        for(size_t j = i + 1; j < n_planes; j++) {
+            for(size_t k = j + 1; k < n_planes; k++) {
+                const Plane &p1 = planes[i];
+                const Plane &p2 = planes[j];
+                const Plane &p3 = planes[k];
+
+                // we need to construct a linear system and solve it to find the intersection
+                // A*x = b
+                // we start from n*(x - p) = 0 => n*x = n*p
+                // Let n*p = b => A * x = b
+                Matrix3 A;
+                A.col1 = glm::vec3(p1.n.x, p2.n.x, p3.n.x);
+                A.col2 = glm::vec3(p1.n.y, p2.n.y, p3.n.y);
+                A.col3 = glm::vec3(p1.n.z, p2.n.z, p3.n.z);
+
+                float det = determinant(A);
+                if(std::abs(det) < 0.0001f) {
+                    continue;
+                }
+                
+                glm::vec3 b(dot3(p1.n, p1.p), dot3(p2.n, p2.p), dot3(p3.n, p3.p));
+
+                Matrix3 inverseA = inverse(A);
+
+                glm::vec3 part1 = mul(inverseA.col1, b.x);
+                glm::vec3 part2 = mul(inverseA.col2, b.y);
+                glm::vec3 part3 = mul(inverseA.col3, b.z);
+                glm::vec3 resultPoint = part1 + part2 + part3;
+
+                bool isInside = true;
+                for(const auto &plane : planes) {
+                    // n * (x - p) = 0
+                    float dist = dot3(plane.n, resultPoint - plane.p);
+
+                    if(std::abs(dist) < 0.0001f) {
+                        isInside = true;
+                        break;
+                    }
+                }
+                
+                if(isInside) {
+                    bool duplicate = false;
+
+                    for (const auto &existing : result) {
+                        if(length(existing - resultPoint) < 0.0001f) {
+                            duplicate = true;
+                            break;
+                        }
+                    }
+
+                    if(!duplicate) {
+                        result.push_back(resultPoint);
+                    }
+                }
+            }
+        }
+    }
 
     return result;
 }
