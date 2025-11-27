@@ -319,14 +319,46 @@ std::vector<glm::vec3> verticesFromPlanes(std::span<const Plane> planes)
 float areaOfTriangle(const std::array<glm::vec3, 3> triangle)
 {
     float result;
-    // Your solution here
-    return result;
+
+    glm::vec3 A = triangle.at(0);
+    glm::vec3 B = triangle.at(1);
+    glm::vec3 C = triangle.at(2);
+
+    glm::vec3 edge1 = A - B;
+    glm::vec3 edge2 = C - B;
+
+    glm::vec3 crossResult = cross3(edge1, edge2);
+
+    return 0.5f * length(crossResult);
 }
 
 std::vector<std::array<glm::vec3, 3>> splitNGonIntoTriangles(const std::vector<glm::vec3> nGon)
 {
     std::vector<std::array<glm::vec3, 3>> result;
-    // Your solution here
+    size_t count = nGon.size();
+
+    if (nGon.size() < 3) {
+        return result;
+    }
+
+    glm::vec3 center(0.0f);
+
+    for(const auto &v : nGon) {
+        center += v;
+    }
+    center /= static_cast<float>(count);
+
+    for(size_t i = 0; i < count; i++) {
+        std::array<glm::vec3, 3> triangle;
+
+        size_t nextIndex = (i + 1) % count;
+        triangle[0] = center;
+        triangle[1] = nGon[i];
+        triangle[2] = nGon[nextIndex];
+
+        result.push_back(triangle);
+    }
+
     return result;
 }
 
