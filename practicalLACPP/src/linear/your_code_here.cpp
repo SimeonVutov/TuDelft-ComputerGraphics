@@ -5,6 +5,7 @@ DISABLE_WARNINGS_PUSH()
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/vec3.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <glm/gtc/constants.hpp>
 DISABLE_WARNINGS_POP()
 #include <iostream>
 #include <algorithm>
@@ -173,6 +174,15 @@ Matrix3 inverse(const Matrix3& matrix)
 }
 
 
+typedef struct VertexData {
+    size_t index;
+    float angle;
+} VertexData;
+
+bool compareByAngle(const VertexData &a, const VertexData &b) {
+    return a.angle < b.angle;
+}
+
 // ==================================
 // ========    Exercise 1    ========
 // ==================================
@@ -180,10 +190,55 @@ Matrix3 inverse(const Matrix3& matrix)
 // You may assume that the n-Gon is convex.
 std::vector<int> orderOfnGonVertices(const std::vector<glm::vec3> nGon)
 {
-    std::vector<int> result;
     // You can assume that all vertices of the n-Gon are residing in some plane in 3D, that there are at least 3 vertices in the n-Gon,
     // and that the n-Gon itself is convex.
     // Your solution here, result should have the indices of the vertices from the n-Gon in either counter- or clockwise order.
+    
+    std::vector<int> result;
+    size_t count = nGon.size();
+
+    if(count < 3) return result;
+
+    glm::vec3 center{0.0f};
+    for(size_t i = 0; i < count; i++) {
+        center += nGon.at(i);
+    }
+    center /= static_cast<float>(count);
+
+    glm::vec3 vecA = nGon[1] - nGon[0];
+    glm::vec3 vecB = nGon[2] - nGon[0];
+
+    glm::vec3 normal = glm::normalize(cross3(vecA, vecB));
+    glm::vec3 refDir = glm::normalize(nGon[0] - center);
+
+    std::vector<VertexData> vertexAngles;
+    vertexAngles.reserve(count);
+
+    for(size_t i = 0; i < count; i++) {
+        glm::vec3 currDir = glm::normalize(nGon[i] - center);
+        float dot = dot3(refDir, currDir);
+
+        if(dot > 1.0f) dot = 1.0f;
+        else if(dot < -1.0f) dot = -1.0f;
+
+        float angle = std::acos(dot);
+
+        glm::vec3 cross = cross3(refDir, currDir);
+        float sign = dot3(cross, normal);
+
+        if(sign < 0.0f) {
+            angle = glm::two_pi<float>() - angle;
+        }
+        
+        vertexAngles.push_back({i, angle});
+    }
+
+    std::sort(vertexAngles.begin(), vertexAngles.end(), compareByAngle);
+
+    for(const VertexData &v : vertexAngles) {
+        result.push_back(v.index);
+    }
+    
     return result;
 }
 
