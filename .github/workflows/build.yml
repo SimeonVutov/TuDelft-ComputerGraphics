@@ -22,12 +22,15 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # IMPORTANT: Required to detect changes against main
+        fetch-depth: 0 # CRITICAL: Required to compare changes against main
         set-safe-directory: true
 
     - name: Build Modified Projects
       shell: bash
       run: |
+        git config --global --add safe.directory $GITHUB_WORKSPACE
+        # -----------------------------------------------------
+
         # 1. Get list of changed files compared to main
         # The output uses forward slashes (Shading/src/...)
         CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
@@ -52,7 +55,7 @@ jobs:
             
                 # 3. OPTIMIZATION:
                 # If NOT forcing all, AND no files in this dir changed, SKIP it.
-                # We grep specifically for "^DirectoryName/"
+                # We grep specifically for start of line "^DirectoryName/"
                 if [ "$FORCE_ALL" = false ] && ! echo "$CHANGED_FILES" | grep -q "^$dir/"; then
                     echo ">> Skipping $dir (No changes detected)"
                     continue
@@ -76,7 +79,7 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0 # IMPORTANT: Required to detect changes against main
+        fetch-depth: 0 # CRITICAL: Required to compare changes against main
 
     - name: Build Modified Projects
       shell: powershell
@@ -95,6 +98,7 @@ jobs:
         foreach ($folder in $folders) {
             $dirName = $folder.Name
             
+            # Check for CMakeLists.txt
             if (Test-Path "$dirName\CMakeLists.txt") {
                 
                 # 3. OPTIMIZATION:
@@ -110,6 +114,7 @@ jobs:
                 Write-Host " Building Project: $dirName"
                 Write-Host "-----------------------------------------------------"
                 
+                # Using Debug config as in your original file
                 cmake -S "$dirName" -B "$dirName/build" -G "Visual Studio 17 2022" -DCMAKE_BUILD_TYPE=Debug
                 if ($LASTEXITCODE -ne 0) { exit 1 }
                 
