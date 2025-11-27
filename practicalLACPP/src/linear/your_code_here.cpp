@@ -22,8 +22,6 @@ std::string to_string(const Matrix3& matrix)
 glm::vec3 mul(const glm::vec3& lhs, float rhs)
 {
     glm::vec3 result {lhs.x * rhs, lhs.y * rhs, lhs.z * rhs};
-    // Your solution goes here
-    // Do *NOT* use glm functionality here, but implement the multiplication yourself.
     return result;
 }
 
@@ -31,8 +29,6 @@ glm::vec3 mul(const glm::vec3& lhs, float rhs)
 float dot3(const glm::vec3& lhs, const glm::vec3& rhs)
 {
     float result;
-    // Your solution goes here
-    // Do *NOT* use glm::dot here, but implement the dot product yourself.
     result = lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
     return result;
 }
@@ -40,8 +36,6 @@ float dot3(const glm::vec3& lhs, const glm::vec3& rhs)
 // Cross product of two vectors
 glm::vec3 cross3(const glm::vec3& lhs, const glm::vec3& rhs)
 {
-    // Your solution goes here
-    // Do *NOT* use glm::cross here, but implement the cross product yourself.
     glm::vec3 result { lhs.y*rhs.z - rhs.y*lhs.z, lhs.z*rhs.x - rhs.z*lhs.x, lhs.x*rhs.y - rhs.x*lhs.y };
     return result;
 }
@@ -50,8 +44,6 @@ glm::vec3 cross3(const glm::vec3& lhs, const glm::vec3& rhs)
 float length(const glm::vec3& lhs)
 {
     float result;
-    // Your solution goes here
-    // Do *NOT* use glm::length here, but implement the length yourself.
     result = glm::sqrt(lhs.x * lhs.x + lhs.y * lhs.y + lhs.z * lhs.z);
     return result;
 }
@@ -111,7 +103,6 @@ Matrix3 transpose(const Matrix3& m)
 float determinant(const Matrix3& m)
 {
     float result;
-    // Your solution goes here
     result = m.col1.x * m.col2.y * m.col3.z +
              m.col3.x * m.col2.z * m.col1.y +
              m.col1.z * m.col2.x * m.col3.y -
