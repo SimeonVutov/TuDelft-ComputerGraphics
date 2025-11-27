@@ -1,5 +1,3 @@
-// Should trigger CI only in this project
-// TEST
 #include "linear.h"
 // Suppress warnings in third-party code.
 #include <framework/disable_all_warnings.h>
