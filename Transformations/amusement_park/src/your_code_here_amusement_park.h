@@ -45,10 +45,30 @@ inline TopSpinMatrices computeTopSpinTransformations(const TopSpinState& topSpin
     TopSpinMatrices matrices;
     // Place the supports at the origin.
     matrices.supports = glm::identity<glm::mat4>(); // DO NOT CHANGE THIS LINE
-    matrices.arms = glm::identity<glm::mat4>();
-    matrices.seats = glm::identity<glm::mat4>();
-    for (int i = 0; i < 2 * seatsPerRow; ++i) {
-        matrices.harnesses[i] = glm::identity<glm::mat4>();
+    matrices.arms = glm::translate(matrices.supports, glm::vec3(0, 11, 0));
+    matrices.arms = glm::rotate(matrices.arms, armAngleInRadians, glm::vec3(1, 0, 0));
+    matrices.seats = glm::translate(matrices.arms, glm::vec3(0, -7.8f, 0));
+    matrices.seats = glm::rotate(matrices.seats, seatsAngleInRadians, glm::vec3(1, 0, 0));
+    matrices.seats = glm::translate(matrices.seats, glm::vec3(0, -3.0f, 0));    
+
+    const float rowOffset[2] = {0.95f, -0.35f};
+    const float seatWidth = 0.7f;
+    const float startSeatX = -8.0f + (seatWidth / 2.0f);
+    const float endSeatX = 8.0f - (seatWidth / 2.0f);
+    const float gapBetweenSeats = (16.0f - (seatsPerRow * seatWidth)) / (seatsPerRow - 1);
+    for(int row = 0; row < 2; row++) {
+        for(int col = 0; col < seatsPerRow; col++) {
+            glm::mat4 harness = matrices.seats;
+            float x = startSeatX + col * (gapBetweenSeats + seatWidth);
+            float y = 1.5f;
+            float z = rowOffset[row];
+
+            harness = glm::translate(harness, glm::vec3(x, y, z));
+            harness = glm::rotate(harness, harnessAngleInRadians, glm::vec3(1, 0, 0));
+
+            matrices.harnesses[(row * 22) + col] = harness;
+        }
     }
+
     return matrices;
 }
