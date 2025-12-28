@@ -65,6 +65,9 @@ Color diffuseOnly(const MaterialInformation& materialInformation, const glm::vec
 MaterialInformation getMaterialEveningCar(const Color& dayLight, const Color& eveningLight, const MaterialInformation& dayCarMaterial)
 {
     MaterialInformation eveningCarMaterial = dayCarMaterial;
+    eveningCarMaterial.Kd =  dayLight * dayCarMaterial.Kd / eveningLight;
+    eveningCarMaterial.Ks = dayLight * dayCarMaterial.Ks / eveningLight;
+
     return eveningCarMaterial;
 }
 
