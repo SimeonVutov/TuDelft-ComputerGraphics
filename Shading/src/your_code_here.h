@@ -96,8 +96,19 @@ Color phongSpecularOnly(const MaterialInformation& materialInformation, const gl
 // The same test, regarding on which side the light source is, should be used.
 Color blinnPhongSpecularOnly(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& cameraPos, const glm::vec3& lightPos, const Color& lightColor)
 {
+    glm::vec3 N = glm::normalize(normal);
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    glm::vec3 V = glm::normalize(cameraPos - vertexPos);
 
-    return glm::vec3(0, 0, 1);
+    if(glm::dot(N, L) <= 0.0f) {
+        return Color(0.0f);
+    }
+
+    glm::vec3 H = glm::normalize(V + L);
+    float specAngle = glm::max(0.0f, glm::dot(H, N));
+    float specAngleFactored = std::pow(specAngle, materialInformation.shininess);
+
+    return lightColor * materialInformation.Ks * specAngleFactored;
 }
 
 // Difference between Phong and Blinn-Phong
