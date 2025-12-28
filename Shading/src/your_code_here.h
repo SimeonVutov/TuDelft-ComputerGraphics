@@ -76,7 +76,19 @@ MaterialInformation getMaterialEveningCar(const Color& dayLight, const Color& ev
 // E.g., for a plane, the light source below the plane cannot cast light on the top, hence, there can also not be any specularity.
 Color phongSpecularOnly(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& cameraPos, const glm::vec3& lightPos, const Color& lightColor)
 {
-    return glm::vec3(0, 1, 0);
+    glm::vec3 N = glm::normalize(normal);
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    glm::vec3 V = glm::normalize(cameraPos - vertexPos);
+    
+    if(glm::dot(N, L) <= 0.0f) {
+        return Color(0.0f);
+    }
+    glm::vec3 R = glm::reflect(-L, N);
+
+    float specAngle = glm::max(0.0f, glm::dot(R, V));
+    float specAngleFactored = std::pow(specAngle, materialInformation.shininess);
+
+    return lightColor * materialInformation.Kd * specAngleFactored;
 }
 
 // Blinn-Phong Shading Specularity (http://en.wikipedia.org/wiki/Blinn%E2%80%93Phong_shading_model)
