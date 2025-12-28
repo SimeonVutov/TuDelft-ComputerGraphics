@@ -48,7 +48,7 @@ Color debugColor(const MaterialInformation& materialInformation, const glm::vec3
     };
 
     // or material information:
-    return materialInformation.Kd;
+    // return materialInformation.Kd;
 }
 
 // Standard lambertian shading: I * Kd * dot(N,L), clamped to zero when the light is illuminating the surface from behind, where L is the light vector and I is the light color.
