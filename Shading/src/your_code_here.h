@@ -159,13 +159,23 @@ Color gooch(const MaterialInformation& materialInformation, const glm::vec3& ver
 // RETURN the reflected ray direction (vector) to help you  visualize the current configuration.
 glm::vec3 computeReflection(const glm::vec3& normal, const glm::vec3& incomingLightDirection)
 {
-    return normal;
+    glm::vec3 N = glm::normalize(normal);
+    float dotNL = glm::dot(N, incomingLightDirection);
+
+    glm::vec3 r = incomingLightDirection - 2.0f * dotNL * N;
+
+    return r;
 }
 
 // RETURN the optimal normal for the mirror, such that the light towards the given direction is reflected at mirrorPos towards the center of the pole (targetVertexPos)
 glm::vec3 optimalMirrorNormal(const glm::vec3& mirrorPos, const glm::vec3& incomingLightDirection, const glm::vec3& targetVertexPos)
 {
-    return glm::normalize(glm::vec3(1.0, 1.0, -1.0));
+    glm::vec3 targetVec = glm::normalize(targetVertexPos - mirrorPos);
+    glm::vec3 L = glm::normalize(-incomingLightDirection);
+
+    glm::vec3 optimal = glm::normalize(targetVec + L);
+
+    return optimal;
 }
 
 // ======================= Shading Model Viewer ==========================
