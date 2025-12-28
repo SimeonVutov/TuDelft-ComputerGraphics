@@ -115,7 +115,13 @@ Color blinnPhongSpecularOnly(const MaterialInformation& materialInformation, con
 // The goal is to visualize the change in specularities, the assignment gives detailed instructions.
 Color diffPhongSpecularOnly(const glm::vec3& phong, const glm::vec3& blinnPhong)
 {
-    return glm::vec3(0, 0, 1);
+    float d = glm::length(phong - blinnPhong) * 4.0f;
+    float phongLength = glm::length(phong);
+    float blinnPhongLength = glm::length(blinnPhong);
+    
+    Color resultColor = phongLength > blinnPhongLength ? Color(d, 0, 0) : Color(0, d, d);
+
+    return resultColor;
 }
 
 // Gooch shading model
