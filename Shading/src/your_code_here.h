@@ -187,6 +187,11 @@ void drawSurfacePoint()
 
     // use GL_POINTS to draw a point (quad) at the origin
     // use a color of your choice and the provided pointSize
+    glBegin(GL_POINTS);
+        glColor3f(1, 0, 0);
+        glVertex3f(0, 0, 0);
+        glPointSize(pointSize);
+    glEnd();
 }
 
 // DRAW SURFACE PATCH
@@ -196,6 +201,17 @@ void drawSurfacePatch()
 
     // Draw a surface patch at the origin with side lengths 2*halfLength using GL_QUADS
     // use a color of your choice
+
+    glColor3f(0, 1, 0);
+
+    glBegin(GL_QUADS);
+
+    glVertex3f(-halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, halfLength);
+    glVertex3f(-halfLength, 0.0f, halfLength);
+
+    glEnd();
 }
 
 // DRAW SURFACE BOUNDARY
@@ -206,6 +222,23 @@ void drawSurfaceBoundary()
 
     // Draw the boundary of the surface using GL_LINES
     // use a color of your choice and the provided line width
+    glColor3f(1, 0, 0);
+
+    glBegin(GL_LINES);
+
+    glVertex3f(-halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, -halfLength);
+    
+    glVertex3f(halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, halfLength);
+
+    glVertex3f(halfLength, 0.0f, halfLength);
+    glVertex3f(-halfLength, 0.0f, halfLength);
+
+    glVertex3f(-halfLength, 0.0f, halfLength);
+    glVertex3f(-halfLength, 0.0f, -halfLength);
+
+    glEnd();
 }
 
 // Draw Vector Helper for drawLightDirectionAndNormal(...)
@@ -216,6 +249,20 @@ void drawVector(const glm::vec3& origin, const glm::vec3& directionVector, const
 
     // Draw the directionVector starting at origin using GL_LINES and GL_POINTS for the tip.
     // Use the provided lineWidth, pointSize, and light color.
+
+    glColor3f(color.r, color.g, color.b);
+    glLineWidth(lineWidth);
+    glPointSize(pointSize);
+    // value_ptr gives the pointer to where the vector is stored in memory
+    // glVertex3fv takes the vector pointer to where it is stored in memory
+    glBegin(GL_POINTS);
+        glVertex3fv(glm::value_ptr(origin + directionVector));
+    glEnd();
+
+    glBegin(GL_LINES);
+        glVertex3fv(glm::value_ptr(origin));
+        glVertex3fv(glm::value_ptr(origin + directionVector));
+    glEnd();
 }
 
 // DRAW LIGHT DIRECTION AND SURFACE NORMAL
