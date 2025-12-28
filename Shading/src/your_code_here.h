@@ -1,6 +1,7 @@
 #ifndef SHADING_ASSIGNMENT_YOUR_CODE_HERE
 #define SHADING_ASSIGNMENT_YOUR_CODE_HERE
 
+#include "glm/common.hpp"
 #pragma once
 // Disable warnings in third-party code.
 #include <framework/disable_all_warnings.h>
@@ -130,7 +131,27 @@ Color diffPhongSpecularOnly(const glm::vec3& phong, const glm::vec3& blinnPhong)
 // Here, you are asked to implement a toon shaded version, as described in the assignment.
 Color gooch(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& lightPos, const Color& lightColor, const int n)
 {
-    return glm::vec3(0, 0, 1);
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    glm::vec3 N = glm::normalize(normal);
+
+    float theta = glm::dot(N, L);
+    float a = (1.0f + theta) / 2.0f;
+    int i = glm::clamp((int)std::floor(a * (2.0f * (float)n + 1.0f)), 0, 2 * n);
+    float discretize = (float)i / (2 * (float)n);
+
+    Color kBlue = Color(0, 0, materialInformation.goochB);
+    Color kYellow = Color(materialInformation.goochY, materialInformation.goochY, 0);
+
+
+    Color kCool = kBlue + materialInformation.goochAlpha * materialInformation.Kd;
+    Color kWarm = kYellow + materialInformation.goochBeta * materialInformation.Kd;
+
+
+    Color goochDiffuse = discretize * kWarm + (1.0f - discretize) * kCool;
+    goochDiffuse = glm::clamp(goochDiffuse, Color(0.0f), Color(1.0f));
+
+
+    return lightColor * goochDiffuse;
 }
 
 // ======================= Thermosolar power plant part ==========================
