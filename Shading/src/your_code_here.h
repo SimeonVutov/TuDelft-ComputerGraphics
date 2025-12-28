@@ -35,26 +35,30 @@ Color debugColor(const MaterialInformation& materialInformation, const glm::vec3
 {
     // This function you can use in any way you like!
     // E.g., for debugging purposes!
-    return (normal + 1.0f) / 2.0f;
+    // return (normal + 1.0f) / 2.0f;
 
     // or random color per vertex:
-    // const size_t hashX = std::hash<float>()(vertexPos.x);
-    // const size_t hashY = std::hash<float>()(vertexPos.y);
-    // const size_t hashZ = std::hash<float>()(vertexPos.z);
-    // return Color {
-    //     (double)hashX / std::numeric_limits<size_t>::max(),
-    //     (double)hashY / std::numeric_limits<size_t>::max(),
-    //     (double)hashZ / std::numeric_limits<size_t>::max()
-    // };
+    const size_t hashX = std::hash<float>()(vertexPos.x);
+    const size_t hashY = std::hash<float>()(vertexPos.y);
+    const size_t hashZ = std::hash<float>()(vertexPos.z);
+    return Color {
+        (double)hashX / std::numeric_limits<size_t>::max(),
+        (double)hashY / std::numeric_limits<size_t>::max(),
+        (double)hashZ / std::numeric_limits<size_t>::max()
+    };
 
     // or material information:
-    // return materialInformation.Kd;
+    return materialInformation.Kd;
 }
 
 // Standard lambertian shading: I * Kd * dot(N,L), clamped to zero when the light is illuminating the surface from behind, where L is the light vector and I is the light color.
 Color diffuseOnly(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& lightPos, const Color& lightColor)
 {
-    return glm::vec3(0, 0, 1);
+    Color KD = materialInformation.Kd;
+    Color I = lightColor;
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    
+    return I * KD * glm::max(0.0f, glm::dot(normal, L));
 }
 
 // Set the correct material of the evening car to appear with the same color under evening light as the day car at daylight
