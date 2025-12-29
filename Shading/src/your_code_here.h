@@ -293,10 +293,25 @@ std::vector<glm::vec3> generateSphereVertices(int n_latitude, int m_longitude)
     std::vector<glm::vec3> sphereVertices;
 
     // Add the top vertex of the sphere to sphereVertices
-
+    sphereVertices.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
     // Create a list of sphereVertices at the intersections of the aforementioned subdivision lines
+    for(int i = 1; i < n_latitude; i++) {
+        float theta = glm::pi<float>() * (float) i / (float) n_latitude;
+
+        for(int j = 0; j < m_longitude; j++) {
+            float phi = glm::pi<float>() * (float) j / (float) m_longitude;
+
+            float y = std::cos(theta);
+            float x = std::sin(theta) * std::cos(phi);
+            float z = std::sin(theta) * std::sin(phi);
+
+            sphereVertices.push_back(glm::vec3(x, y, z));
+        }
+    }
 
     // Add the bottom vertex of the sphere to sphereVertices
+
+    sphereVertices.push_back(glm::vec3(0.0f, -1.0f, 0.0f));
 
     if (!sphereVertices.empty()) {
         assert(sphereVertices.size() == (n_latitude - 1) * m_longitude + 2);
@@ -316,9 +331,16 @@ std::vector<glm::vec3> generateSphereVertices(int n_latitude, int m_longitude)
 // The solution will look trivial, we just want you to quickly reflect on what we are actually computing/visualising here.
 void getReflectedLightInputParameters(const std::vector<glm::vec3>& sphereVertices, glm::vec3& position, glm::vec3& normalVector, std::vector<glm::vec3>& viewDirections)
 {
-    // position = ...
-    // normalVector = ...
-    // viewDirections = ...
+    position = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    normalVector = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    // viewDirections.clear();
+    // viewDirections.reserve(sphereVertices.size());
+
+    for(const auto &vertex : sphereVertices) {
+        viewDirections.push_back(glm::normalize(vertex));
+    }
 }
 
 // Displace all the vertices depending on the intensity
@@ -328,6 +350,16 @@ void displaceVerticesByIntensity(std::span<const glm::vec3> vertexColors, std::s
 {
     // Write the output to sphereVertices:
     //  sphereVertices[i] = glm::vec3(0);
+    //
+    for (size_t i = 0; i < sphereVertices.size(); i++) {
+        float intensity = glm::length(vertexColors[i]);
+
+        if(intensity < 0.0f) {
+            intensity = 0.0f;
+        }
+
+        sphereVertices[i] *= intensity;
+    }
 }
 
 // VISUALIZATION MODES POINTS AND VECTORS
@@ -340,6 +372,14 @@ void drawSphereGrid(std::span<const glm::vec3> vertices, std::span<const glm::ve
     const float pointSize = 10;
 
     // Given the displaced vertices and the vertex colors, draw the deformed sphere using GL_POINTS
+    glPointSize(pointSize);
+
+    glBegin(GL_POINTS);
+    for(size_t i = 0; i < vertices.size(); i++) {
+        glColor3fv(glm::value_ptr(vertexColors[i]));
+        glVertex3fv(glm::value_ptr(vertices[i]));
+    }
+    glEnd();
 }
 
 // Visualization mode Vectors
@@ -351,6 +391,24 @@ void drawSphereVectors(std::span<const glm::vec3> vertices, std::span<const glm:
 
     // Draw the displacement vectors using GL_LINES and GL_POINTS for the tip
     // For the lines you can use a color of your choice, use the provided pointSize and lineWidth
+    
+    glPointSize(pointSize);
+    glLineWidth(lineWidth);
+
+    glBegin(GL_LINES);
+    for(size_t i = 0; i < vertices.size(); i++) {
+        glColor3fv(glm::value_ptr(vertexColors[i]));
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3fv(glm::value_ptr(vertices[i]));
+    }
+    glEnd();
+
+    glBegin(GL_POINTS);
+    for(size_t i = 0; i < vertices.size(); i++) {
+        glColor3fv(glm::value_ptr(vertexColors[i]));
+        glVertex3fv(glm::value_ptr(vertices[i]));
+    }
+    glEnd();
 }
 
 // VISUALIZATION MODE MESH
