@@ -82,7 +82,13 @@ std::vector<glm::vec2> generateCirclePoints(float radius, glm::vec2 center, size
 {
     std::vector<glm::vec2> points (numPoints);
 
+    for (size_t i = 0; i < numPoints; i++) {
+        float angle = glm::pi<float>() * 2.0f * static_cast<float>(i) / static_cast<float>(numPoints);
+        float x = std::cos(angle) * radius;
+        float y = std::sin(angle) * radius;
 
+        points[i] = glm::vec2(x, y) + center;
+    }
     return points;
 }
 
@@ -93,6 +99,13 @@ std::vector<glm::vec2> generateCirclePoints(float radius, glm::vec2 center, size
  */
 void drawPolygon(std::span<const glm::vec2> polygon, const float time, const glm::vec4& color)
 {
+    glColor4fv(glm::value_ptr(color));
+
+    glBegin(GL_POLYGON);
+    for(const auto& vertex : polygon) {
+        glVertex3f(vertex.x, vertex.y, -time);
+    }
+    glEnd();
 }
 
 /*
@@ -103,7 +116,13 @@ void drawPolygon(std::span<const glm::vec2> polygon, const float time, const glm
 void drawPolygonOutline(std::span<const glm::vec2> polygon, const float time, const glm::vec4& color)
 {
     glLineWidth(2);
-
+    
+    glBegin(GL_LINE_LOOP);
+    for(const auto& vertex : polygon) {
+        glColor4fv(glm::value_ptr(color));
+        glVertex3f(vertex.x, vertex.y, -time);
+    }
+    glEnd();
 }
 
 /*
@@ -119,7 +138,10 @@ std::vector<glm::vec2> applyInitialPosition(
 
     std::vector<glm::vec2> translatedPolygon;
     translatedPolygon.assign(polygon.begin(), polygon.end());
-
+    
+    for(size_t i = 0; i < polygon.size(); i++) {
+        translatedPolygon[i] = polygon[i] + initialPosition;
+    }
 
     return translatedPolygon;
 }
@@ -136,9 +158,29 @@ std::vector<glm::vec2> applyInitialPosition(
  */
 std::vector<glm::vec2> applyMovementInTime(std::span<const glm::vec2> polygon, std::span<const glm::vec2> motionSteps, const float t) {
 
-    std::vector<glm::vec2> translatedPolygon;
-    translatedPolygon.assign(polygon.begin(), polygon.end());
+    if(t <= 0.0f) {
+        return std::vector<glm::vec2>(polygon.begin(), polygon.end());
+    }
 
+    size_t fullSteps = static_cast<size_t>(std::floor(t));
+    size_t numMotionSteps = motionSteps.size();
+    glm::vec2 displacementVec {0.0f, 0.0f};
+
+    for(size_t i = 0; i <= std::min(fullSteps, numMotionSteps); i++) {
+        displacementVec += motionSteps[i];
+    }
+    
+    if(fullSteps < motionSteps.size()) {
+        float fraction = t - static_cast<float>(fullSteps);
+        displacementVec += motionSteps[fullSteps] * fraction;
+    }
+
+    std::vector<glm::vec2> translatedPolygon;
+    translatedPolygon.reserve(polygon.size());
+
+    for(const auto &vertex : polygon) {
+        translatedPolygon.push_back(vertex + displacementVec);
+    }
 
     return translatedPolygon;
 }
