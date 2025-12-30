@@ -27,6 +27,28 @@ std::vector<MazeTile> generateMaze(const glm::ivec2 mazeCenter, const Game::Maze
     assert(!maze.empty());
     const size_t mazeSizeX = maze[0].size();
 
+    float z = -time;
+    for(uint32_t y = 0; y < mazeSizeY; y++) {
+        for(uint32_t x = 0; x < mazeSizeX; x++) {
+            MazeTile tile;
+
+            float world_x = static_cast<float>(x) - static_cast<float>(mazeCenter.x);
+            float world_y = static_cast<float>(y) - static_cast<float>(mazeCenter.y);
+
+            tile.v1 = glm::vec3(world_x - 0.5f, world_y - 0.5f, z);
+            tile.v2 = glm::vec3(world_x + 0.5f, world_y - 0.5f, z);
+            tile.v3 = glm::vec3(world_x + 0.5f, world_y + 0.5f, z);
+            tile.v4 = glm::vec3(world_x - 0.5f, world_y + 0.5f, z);
+            
+            if(maze[y][x]) {
+                tile.color = color_filled_cell;
+            } else {
+                tile.color = color_empty_cell;
+            }
+
+            tiles.push_back(tile);
+        }
+    }
 
     return tiles;
 }
@@ -35,6 +57,16 @@ std::vector<MazeTile> generateMaze(const glm::ivec2 mazeCenter, const Game::Maze
  * Draw the maze of the previously generated maze tiles using GL_QUADS
 */
 void drawMaze(std::span<const MazeTile> tiles) {
+    glBegin(GL_QUADS);
+    for(const auto& tile : tiles) {
+        glColor4fv(glm::value_ptr(tile.color));
+
+        glVertex3fv(glm::value_ptr(tile.v1));
+        glVertex3fv(glm::value_ptr(tile.v2));
+        glVertex3fv(glm::value_ptr(tile.v3));
+        glVertex3fv(glm::value_ptr(tile.v4));
+    }
+    glEnd();
 }
 
 
