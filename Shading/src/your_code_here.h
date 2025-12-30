@@ -1,6 +1,7 @@
 #ifndef SHADING_ASSIGNMENT_YOUR_CODE_HERE
 #define SHADING_ASSIGNMENT_YOUR_CODE_HERE
 
+#include "glm/common.hpp"
 #pragma once
 // Disable warnings in third-party code.
 #include <framework/disable_all_warnings.h>
@@ -35,17 +36,17 @@ Color debugColor(const MaterialInformation& materialInformation, const glm::vec3
 {
     // This function you can use in any way you like!
     // E.g., for debugging purposes!
-    return (normal + 1.0f) / 2.0f;
+    // return (normal + 1.0f) / 2.0f;
 
     // or random color per vertex:
-    // const size_t hashX = std::hash<float>()(vertexPos.x);
-    // const size_t hashY = std::hash<float>()(vertexPos.y);
-    // const size_t hashZ = std::hash<float>()(vertexPos.z);
-    // return Color {
-    //     (double)hashX / std::numeric_limits<size_t>::max(),
-    //     (double)hashY / std::numeric_limits<size_t>::max(),
-    //     (double)hashZ / std::numeric_limits<size_t>::max()
-    // };
+    const size_t hashX = std::hash<float>()(vertexPos.x);
+    const size_t hashY = std::hash<float>()(vertexPos.y);
+    const size_t hashZ = std::hash<float>()(vertexPos.z);
+    return Color {
+        (double)hashX / std::numeric_limits<size_t>::max(),
+        (double)hashY / std::numeric_limits<size_t>::max(),
+        (double)hashZ / std::numeric_limits<size_t>::max()
+    };
 
     // or material information:
     // return materialInformation.Kd;
@@ -54,13 +55,20 @@ Color debugColor(const MaterialInformation& materialInformation, const glm::vec3
 // Standard lambertian shading: I * Kd * dot(N,L), clamped to zero when the light is illuminating the surface from behind, where L is the light vector and I is the light color.
 Color diffuseOnly(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& lightPos, const Color& lightColor)
 {
-    return glm::vec3(0, 0, 1);
+    Color KD = materialInformation.Kd;
+    Color I = lightColor;
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    
+    return I * KD * glm::max(0.0f, glm::dot(normal, L));
 }
 
 // Set the correct material of the evening car to appear with the same color under evening light as the day car at daylight
 MaterialInformation getMaterialEveningCar(const Color& dayLight, const Color& eveningLight, const MaterialInformation& dayCarMaterial)
 {
     MaterialInformation eveningCarMaterial = dayCarMaterial;
+    eveningCarMaterial.Kd =  dayLight * dayCarMaterial.Kd / eveningLight;
+    eveningCarMaterial.Ks = dayLight * dayCarMaterial.Ks / eveningLight;
+
     return eveningCarMaterial;
 }
 
@@ -69,7 +77,19 @@ MaterialInformation getMaterialEveningCar(const Color& dayLight, const Color& ev
 // E.g., for a plane, the light source below the plane cannot cast light on the top, hence, there can also not be any specularity.
 Color phongSpecularOnly(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& cameraPos, const glm::vec3& lightPos, const Color& lightColor)
 {
-    return glm::vec3(0, 1, 0);
+    glm::vec3 N = glm::normalize(normal);
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    glm::vec3 V = glm::normalize(cameraPos - vertexPos);
+    
+    if(glm::dot(N, L) <= 0.0f) {
+        return Color(0.0f);
+    }
+    glm::vec3 R = glm::reflect(-L, N);
+
+    float specAngle = glm::max(0.0f, glm::dot(R, V));
+    float specAngleFactored = std::pow(specAngle, materialInformation.shininess);
+
+    return lightColor * materialInformation.Ks * specAngleFactored;
 }
 
 // Blinn-Phong Shading Specularity (http://en.wikipedia.org/wiki/Blinn%E2%80%93Phong_shading_model)
@@ -77,15 +97,32 @@ Color phongSpecularOnly(const MaterialInformation& materialInformation, const gl
 // The same test, regarding on which side the light source is, should be used.
 Color blinnPhongSpecularOnly(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& cameraPos, const glm::vec3& lightPos, const Color& lightColor)
 {
+    glm::vec3 N = glm::normalize(normal);
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    glm::vec3 V = glm::normalize(cameraPos - vertexPos);
 
-    return glm::vec3(0, 0, 1);
+    if(glm::dot(N, L) <= 0.0f) {
+        return Color(0.0f);
+    }
+
+    glm::vec3 H = glm::normalize(V + L);
+    float specAngle = glm::max(0.0f, glm::dot(H, N));
+    float specAngleFactored = std::pow(specAngle, materialInformation.shininess);
+
+    return lightColor * materialInformation.Ks * specAngleFactored;
 }
 
 // Difference between Phong and Blinn-Phong
 // The goal is to visualize the change in specularities, the assignment gives detailed instructions.
 Color diffPhongSpecularOnly(const glm::vec3& phong, const glm::vec3& blinnPhong)
 {
-    return glm::vec3(0, 0, 1);
+    float d = glm::length(phong - blinnPhong) * 4.0f;
+    float phongLength = glm::length(phong);
+    float blinnPhongLength = glm::length(blinnPhong);
+    
+    Color resultColor = phongLength > blinnPhongLength ? Color(d, 0, 0) : Color(0, d, d);
+
+    return resultColor;
 }
 
 // Gooch shading model
@@ -94,7 +131,27 @@ Color diffPhongSpecularOnly(const glm::vec3& phong, const glm::vec3& blinnPhong)
 // Here, you are asked to implement a toon shaded version, as described in the assignment.
 Color gooch(const MaterialInformation& materialInformation, const glm::vec3& vertexPos, const glm::vec3& normal, const glm::vec3& lightPos, const Color& lightColor, const int n)
 {
-    return glm::vec3(0, 0, 1);
+    glm::vec3 L = glm::normalize(lightPos - vertexPos);
+    glm::vec3 N = glm::normalize(normal);
+
+    float theta = glm::dot(N, L);
+    float a = (1.0f + theta) / 2.0f;
+    int i = glm::clamp((int)std::floor(a * (2.0f * (float)n + 1.0f)), 0, 2 * n);
+    float discretize = (float)i / (2 * (float)n);
+
+    Color kBlue = Color(0, 0, materialInformation.goochB);
+    Color kYellow = Color(materialInformation.goochY, materialInformation.goochY, 0);
+
+
+    Color kCool = kBlue + materialInformation.goochAlpha * materialInformation.Kd;
+    Color kWarm = kYellow + materialInformation.goochBeta * materialInformation.Kd;
+
+
+    Color goochDiffuse = discretize * kWarm + (1.0f - discretize) * kCool;
+    goochDiffuse = glm::clamp(goochDiffuse, Color(0.0f), Color(1.0f));
+
+
+    return lightColor * goochDiffuse;
 }
 
 // ======================= Thermosolar power plant part ==========================
@@ -102,13 +159,23 @@ Color gooch(const MaterialInformation& materialInformation, const glm::vec3& ver
 // RETURN the reflected ray direction (vector) to help you  visualize the current configuration.
 glm::vec3 computeReflection(const glm::vec3& normal, const glm::vec3& incomingLightDirection)
 {
-    return normal;
+    glm::vec3 N = glm::normalize(normal);
+    float dotNL = glm::dot(N, incomingLightDirection);
+
+    glm::vec3 r = incomingLightDirection - 2.0f * dotNL * N;
+
+    return r;
 }
 
 // RETURN the optimal normal for the mirror, such that the light towards the given direction is reflected at mirrorPos towards the center of the pole (targetVertexPos)
 glm::vec3 optimalMirrorNormal(const glm::vec3& mirrorPos, const glm::vec3& incomingLightDirection, const glm::vec3& targetVertexPos)
 {
-    return glm::normalize(glm::vec3(1.0, 1.0, -1.0));
+    glm::vec3 targetVec = glm::normalize(targetVertexPos - mirrorPos);
+    glm::vec3 L = glm::normalize(-incomingLightDirection);
+
+    glm::vec3 optimal = glm::normalize(targetVec + L);
+
+    return optimal;
 }
 
 // ======================= Shading Model Viewer ==========================
@@ -120,6 +187,11 @@ void drawSurfacePoint()
 
     // use GL_POINTS to draw a point (quad) at the origin
     // use a color of your choice and the provided pointSize
+    glBegin(GL_POINTS);
+        glColor3f(1, 0, 0);
+        glVertex3f(0, 0, 0);
+        glPointSize(pointSize);
+    glEnd();
 }
 
 // DRAW SURFACE PATCH
@@ -129,6 +201,17 @@ void drawSurfacePatch()
 
     // Draw a surface patch at the origin with side lengths 2*halfLength using GL_QUADS
     // use a color of your choice
+
+    glColor3f(0, 1, 0);
+
+    glBegin(GL_QUADS);
+
+    glVertex3f(-halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, halfLength);
+    glVertex3f(-halfLength, 0.0f, halfLength);
+
+    glEnd();
 }
 
 // DRAW SURFACE BOUNDARY
@@ -139,6 +222,23 @@ void drawSurfaceBoundary()
 
     // Draw the boundary of the surface using GL_LINES
     // use a color of your choice and the provided line width
+    glColor3f(1, 0, 0);
+
+    glBegin(GL_LINES);
+
+    glVertex3f(-halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, -halfLength);
+    
+    glVertex3f(halfLength, 0.0f, -halfLength);
+    glVertex3f(halfLength, 0.0f, halfLength);
+
+    glVertex3f(halfLength, 0.0f, halfLength);
+    glVertex3f(-halfLength, 0.0f, halfLength);
+
+    glVertex3f(-halfLength, 0.0f, halfLength);
+    glVertex3f(-halfLength, 0.0f, -halfLength);
+
+    glEnd();
 }
 
 // Draw Vector Helper for drawLightDirectionAndNormal(...)
@@ -149,6 +249,20 @@ void drawVector(const glm::vec3& origin, const glm::vec3& directionVector, const
 
     // Draw the directionVector starting at origin using GL_LINES and GL_POINTS for the tip.
     // Use the provided lineWidth, pointSize, and light color.
+
+    glColor3f(color.r, color.g, color.b);
+    glLineWidth(lineWidth);
+    glPointSize(pointSize);
+    // value_ptr gives the pointer to where the vector is stored in memory
+    // glVertex3fv takes the vector pointer to where it is stored in memory
+    glBegin(GL_POINTS);
+        glVertex3fv(glm::value_ptr(origin + directionVector));
+    glEnd();
+
+    glBegin(GL_LINES);
+        glVertex3fv(glm::value_ptr(origin));
+        glVertex3fv(glm::value_ptr(origin + directionVector));
+    glEnd();
 }
 
 // DRAW LIGHT DIRECTION AND SURFACE NORMAL
@@ -179,10 +293,25 @@ std::vector<glm::vec3> generateSphereVertices(int n_latitude, int m_longitude)
     std::vector<glm::vec3> sphereVertices;
 
     // Add the top vertex of the sphere to sphereVertices
-
+    sphereVertices.push_back(glm::vec3(0.0f, 1.0f, 0.0f));
     // Create a list of sphereVertices at the intersections of the aforementioned subdivision lines
+    for(int i = 1; i < n_latitude; i++) {
+        float theta = glm::pi<float>() * (float) i / (float) n_latitude;
+
+        for(int j = 0; j < m_longitude; j++) {
+            float phi = 2.0f * glm::pi<float>() * (float) j / (float) m_longitude;
+
+            float y = std::cos(theta);
+            float x = std::sin(theta) * std::cos(phi);
+            float z = std::sin(theta) * std::sin(phi);
+
+            sphereVertices.push_back(glm::vec3(x, y, z));
+        }
+    }
 
     // Add the bottom vertex of the sphere to sphereVertices
+
+    sphereVertices.push_back(glm::vec3(0.0f, -1.0f, 0.0f));
 
     if (!sphereVertices.empty()) {
         assert(sphereVertices.size() == (n_latitude - 1) * m_longitude + 2);
@@ -202,9 +331,16 @@ std::vector<glm::vec3> generateSphereVertices(int n_latitude, int m_longitude)
 // The solution will look trivial, we just want you to quickly reflect on what we are actually computing/visualising here.
 void getReflectedLightInputParameters(const std::vector<glm::vec3>& sphereVertices, glm::vec3& position, glm::vec3& normalVector, std::vector<glm::vec3>& viewDirections)
 {
-    // position = ...
-    // normalVector = ...
-    // viewDirections = ...
+    position = glm::vec3(0.0f, 0.0f, 0.0f);
+
+    normalVector = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    viewDirections.clear();
+    viewDirections.reserve(sphereVertices.size());
+
+    for(const auto &vertex : sphereVertices) {
+        viewDirections.push_back(glm::normalize(vertex));
+    }
 }
 
 // Displace all the vertices depending on the intensity
@@ -214,6 +350,16 @@ void displaceVerticesByIntensity(std::span<const glm::vec3> vertexColors, std::s
 {
     // Write the output to sphereVertices:
     //  sphereVertices[i] = glm::vec3(0);
+    //
+    for (size_t i = 0; i < sphereVertices.size(); i++) {
+        float intensity = glm::length(vertexColors[i]);
+
+        if(sphereVertices[i].y < 0.0f) {
+            intensity = 0.0f;
+        }
+
+        sphereVertices[i] *= intensity;
+    }
 }
 
 // VISUALIZATION MODES POINTS AND VECTORS
@@ -226,6 +372,14 @@ void drawSphereGrid(std::span<const glm::vec3> vertices, std::span<const glm::ve
     const float pointSize = 10;
 
     // Given the displaced vertices and the vertex colors, draw the deformed sphere using GL_POINTS
+    glPointSize(pointSize);
+
+    glBegin(GL_POINTS);
+    for(size_t i = 0; i < vertices.size(); i++) {
+        glColor3fv(glm::value_ptr(vertexColors[i]));
+        glVertex3fv(glm::value_ptr(vertices[i]));
+    }
+    glEnd();
 }
 
 // Visualization mode Vectors
@@ -237,6 +391,24 @@ void drawSphereVectors(std::span<const glm::vec3> vertices, std::span<const glm:
 
     // Draw the displacement vectors using GL_LINES and GL_POINTS for the tip
     // For the lines you can use a color of your choice, use the provided pointSize and lineWidth
+    
+    glPointSize(pointSize);
+    glLineWidth(lineWidth);
+
+    glBegin(GL_LINES);
+    for(size_t i = 0; i < vertices.size(); i++) {
+        glColor3fv(glm::value_ptr(vertexColors[i]));
+        glVertex3f(0.0f, 0.0f, 0.0f);
+        glVertex3fv(glm::value_ptr(vertices[i]));
+    }
+    glEnd();
+
+    glBegin(GL_POINTS);
+    for(size_t i = 0; i < vertices.size(); i++) {
+        glColor3fv(glm::value_ptr(vertexColors[i]));
+        glVertex3fv(glm::value_ptr(vertices[i]));
+    }
+    glEnd();
 }
 
 // VISUALIZATION MODE MESH
@@ -255,9 +427,41 @@ void generateSphereMesh(
 
     // Create a list of quads for all the segments other than the ones at the poles
     // Each quad is defined by a uvec4 containing the indices of the four vertices in sphereVertices
+    // We make the quads where top vertices are the current ones. This way we need to skip the last ring since for it we
+    // will use triangles and also skip the last ring which is the bottom vertex only
+    for(uint32_t i = 0; i < n_latitude - 2; i++) {
+        for(uint32_t j = 0; j < m_longitude; j++) {
+            uint32_t ringAbove = 1 + i * m_longitude;
+            uint32_t ringBelow = 1 + (i + 1) * m_longitude;
 
+            uint32_t topLeft = ringAbove + j;
+            uint32_t topRight = ringAbove + (j + 1) % m_longitude;
+            uint32_t bottomRight = ringBelow + (j + 1) % m_longitude;
+            uint32_t bottomLeft = ringBelow + j;
+
+            quads.push_back(glm::uvec4(topLeft, topRight, bottomRight, bottomLeft));
+        }
+    }
     // Create a list of triangles for the connection of the vertices on the first and last lines with the corresponding poles
     // Each triangle is defined by a uvec3 containing the indices of the three vertices in sphereVertices
+    
+    //Top triangles:
+    for(uint32_t j = 0; j < m_longitude; j++) {
+        uint32_t current = 1 + j;
+        uint32_t next = 1 + (j + 1) % m_longitude;
+
+        triangles.push_back(glm::uvec3(0, next, current));
+    }
+    
+    //Bottom triangles
+    uint32_t bottomVertex = (n_latitude - 1) * m_longitude + 1;
+    uint32_t lastRing = 1 + (n_latitude - 2) * m_longitude;
+    for(uint32_t j = 0; j < m_longitude; j++) {
+        uint32_t current = lastRing + j;
+        uint32_t next = lastRing + (j + 1) % m_longitude;
+
+        triangles.push_back(glm::uvec3(current, next, bottomVertex));
+    }
 
     if (!quads.empty()) {
         assert(quads.size() == m_longitude * (n_latitude - 2));
@@ -277,8 +481,35 @@ void drawSphereMesh(
 {
 
     // Loop through the triangles and draw them using GL_TRIANGLES
+    glBegin(GL_TRIANGLES);
+    for(const auto& triangle : triangles) {
+        glColor3fv(glm::value_ptr(vertexColors[triangle.x]));
+        glVertex3fv(glm::value_ptr(vertices[triangle.x]));
 
+        glColor3fv(glm::value_ptr(vertexColors[triangle.y]));
+        glVertex3fv(glm::value_ptr(vertices[triangle.y]));
+        
+        glColor3fv(glm::value_ptr(vertexColors[triangle.z]));
+        glVertex3fv(glm::value_ptr(vertices[triangle.z]));
+    }
+    glEnd();
     // Loop through the quads and draw them using GL_QUADS
+
+    glBegin(GL_QUADS);
+    for(const auto& quad : quads) {
+        glColor3fv(glm::value_ptr(vertexColors[quad.x]));
+        glVertex3fv(glm::value_ptr(vertices[quad.x]));
+
+        glColor3fv(glm::value_ptr(vertexColors[quad.y]));
+        glVertex3fv(glm::value_ptr(vertices[quad.y]));
+
+        glColor3fv(glm::value_ptr(vertexColors[quad.z]));
+        glVertex3fv(glm::value_ptr(vertices[quad.z]));
+
+        glColor3fv(glm::value_ptr(vertexColors[quad.w]));
+        glVertex3fv(glm::value_ptr(vertices[quad.w]));
+    }
+    glEnd();
 }
 
 #endif // SHADING_ASSIGNMENT_YOUR_CODE_HERE
