@@ -89,7 +89,7 @@ Color phongSpecularOnly(const MaterialInformation& materialInformation, const gl
     float specAngle = glm::max(0.0f, glm::dot(R, V));
     float specAngleFactored = std::pow(specAngle, materialInformation.shininess);
 
-    return lightColor * materialInformation.Kd * specAngleFactored;
+    return lightColor * materialInformation.Ks * specAngleFactored;
 }
 
 // Blinn-Phong Shading Specularity (http://en.wikipedia.org/wiki/Blinn%E2%80%93Phong_shading_model)
@@ -299,7 +299,7 @@ std::vector<glm::vec3> generateSphereVertices(int n_latitude, int m_longitude)
         float theta = glm::pi<float>() * (float) i / (float) n_latitude;
 
         for(int j = 0; j < m_longitude; j++) {
-            float phi = glm::pi<float>() * (float) j / (float) m_longitude;
+            float phi = 2.0f * glm::pi<float>() * (float) j / (float) m_longitude;
 
             float y = std::cos(theta);
             float x = std::sin(theta) * std::cos(phi);
@@ -354,7 +354,7 @@ void displaceVerticesByIntensity(std::span<const glm::vec3> vertexColors, std::s
     for (size_t i = 0; i < sphereVertices.size(); i++) {
         float intensity = glm::length(vertexColors[i]);
 
-        if(intensity < 0.0f) {
+        if(sphereVertices[i].y < 0.0f) {
             intensity = 0.0f;
         }
 
@@ -427,9 +427,41 @@ void generateSphereMesh(
 
     // Create a list of quads for all the segments other than the ones at the poles
     // Each quad is defined by a uvec4 containing the indices of the four vertices in sphereVertices
+    // We make the quads where top vertices are the current ones. This way we need to skip the last ring since for it we
+    // will use triangles and also skip the last ring which is the bottom vertex only
+    for(uint32_t i = 0; i < n_latitude - 2; i++) {
+        for(uint32_t j = 0; j < m_longitude; j++) {
+            uint32_t ringAbove = 1 + i * m_longitude;
+            uint32_t ringBelow = 1 + (i + 1) * m_longitude;
 
+            uint32_t topLeft = ringAbove + j;
+            uint32_t topRight = ringAbove + (j + 1) % m_longitude;
+            uint32_t bottomRight = ringBelow + (j + 1) % m_longitude;
+            uint32_t bottomLeft = ringBelow + j;
+
+            quads.push_back(glm::uvec4(topLeft, topRight, bottomRight, bottomLeft));
+        }
+    }
     // Create a list of triangles for the connection of the vertices on the first and last lines with the corresponding poles
     // Each triangle is defined by a uvec3 containing the indices of the three vertices in sphereVertices
+    
+    //Top triangles:
+    for(uint32_t j = 0; j < m_longitude; j++) {
+        uint32_t current = 1 + j;
+        uint32_t next = 1 + (j + 1) % m_longitude;
+
+        triangles.push_back(glm::uvec3(0, next, current));
+    }
+    
+    //Bottom triangles
+    uint32_t bottomVertex = (n_latitude - 1) * m_longitude + 1;
+    uint32_t lastRing = 1 + (n_latitude - 2) * m_longitude;
+    for(uint32_t j = 0; j < m_longitude; j++) {
+        uint32_t current = lastRing + j;
+        uint32_t next = lastRing + (j + 1) % m_longitude;
+
+        triangles.push_back(glm::uvec3(current, next, bottomVertex));
+    }
 
     if (!quads.empty()) {
         assert(quads.size() == m_longitude * (n_latitude - 2));
@@ -449,8 +481,35 @@ void drawSphereMesh(
 {
 
     // Loop through the triangles and draw them using GL_TRIANGLES
+    glBegin(GL_TRIANGLES);
+    for(const auto& triangle : triangles) {
+        glColor3fv(glm::value_ptr(vertexColors[triangle.x]));
+        glVertex3fv(glm::value_ptr(vertices[triangle.x]));
 
+        glColor3fv(glm::value_ptr(vertexColors[triangle.y]));
+        glVertex3fv(glm::value_ptr(vertices[triangle.y]));
+        
+        glColor3fv(glm::value_ptr(vertexColors[triangle.z]));
+        glVertex3fv(glm::value_ptr(vertices[triangle.z]));
+    }
+    glEnd();
     // Loop through the quads and draw them using GL_QUADS
+
+    glBegin(GL_QUADS);
+    for(const auto& quad : quads) {
+        glColor3fv(glm::value_ptr(vertexColors[quad.x]));
+        glVertex3fv(glm::value_ptr(vertices[quad.x]));
+
+        glColor3fv(glm::value_ptr(vertexColors[quad.y]));
+        glVertex3fv(glm::value_ptr(vertices[quad.y]));
+
+        glColor3fv(glm::value_ptr(vertexColors[quad.z]));
+        glVertex3fv(glm::value_ptr(vertices[quad.z]));
+
+        glColor3fv(glm::value_ptr(vertexColors[quad.w]));
+        glVertex3fv(glm::value_ptr(vertices[quad.w]));
+    }
+    glEnd();
 }
 
 #endif // SHADING_ASSIGNMENT_YOUR_CODE_HERE
