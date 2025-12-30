@@ -335,8 +335,8 @@ void getReflectedLightInputParameters(const std::vector<glm::vec3>& sphereVertic
 
     normalVector = glm::vec3(0.0f, 1.0f, 0.0f);
 
-    // viewDirections.clear();
-    // viewDirections.reserve(sphereVertices.size());
+    viewDirections.clear();
+    viewDirections.reserve(sphereVertices.size());
 
     for(const auto &vertex : sphereVertices) {
         viewDirections.push_back(glm::normalize(vertex));
