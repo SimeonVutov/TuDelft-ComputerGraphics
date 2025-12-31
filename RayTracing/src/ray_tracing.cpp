@@ -23,6 +23,19 @@ bool pointInTriangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& 
 
 bool intersectRayWithPlane(const Plane& plane, Ray& ray)
 {
+    float denom = glm::dot(ray.direction, plane.normal);
+    
+    if(denom == 0) {
+        return false;
+    }
+
+    float t = (plane.D - glm::dot(ray.origin, plane.normal)) / denom;
+
+    if (t > 0.0f && t < ray.t) {
+        ray.t = t;
+        return true;
+    }
+
     return false;
 }
 
@@ -31,6 +44,12 @@ bool intersectRayWithPlane(const Plane& plane, Ray& ray)
 Plane trianglePlane(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2)
 {
     Plane plane;
+    glm::vec3 A = v1 - v0;
+    glm::vec3 B = v1 - v2;
+
+    plane.normal = glm::normalize(glm::cross(A, B));
+    plane.D = glm::dot(v0, plane.normal);
+
     return plane;
 }
 
@@ -86,8 +105,3 @@ bool intersectTestScene (const TestScene &testScene, Ray &ray) {
                                     testScene.vertices[testScene.triangles[0].vertex_indices[2]],
                                     ray);
 }
-
-
-
-
-
