@@ -260,9 +260,49 @@ std::tuple<Hull, Vertices> generateHullGeometry(
     Vertices vertices {};
 
     const size_t polygonN = polygon.size();
-    const size_t sequenceLength = motionSteps.size();
+    const size_t totalSteps = motionSteps.size();
+    
+    glm::vec2 currentPos = initialPosition;
+    for (const auto& v : polygon) {
+        vertices.push_back(glm::vec3(v + currentPos, 0.0f));
+    }
 
+    size_t currentStepIdx = 0;
+    size_t lastRingIdx = 0;
 
+    while(currentStepIdx < totalSteps) {
+        glm::vec2 direction = motionSteps[currentStepIdx];
+        size_t startRingIdx = currentStepIdx;
+
+        while(currentStepIdx < totalSteps && motionSteps[currentStepIdx] == direction) {
+            currentPos += direction;
+            currentStepIdx++;
+        }
+        
+        float timeAtEnd = static_cast<float>(currentStepIdx);
+        for (const auto &vertex : polygon) {
+            vertices.push_back(glm::vec3(vertex + currentPos, -timeAtEnd));
+        }
+        
+        HullSegment segment;
+        size_t startOfPrevRing = lastRingIdx * polygonN;
+        size_t startOfNewRing = (lastRingIdx + 1) * polygonN;
+
+        for (size_t i = 0; i < polygonN; ++i) {
+            size_t next_i = (i + 1) % polygonN;
+
+            uint32_t v_prev_start = static_cast<uint32_t>(startOfPrevRing + i);
+            uint32_t v_prev_second = static_cast<uint32_t>(startOfPrevRing + next_i);
+            uint32_t v_next_third  = static_cast<uint32_t>(startOfNewRing + i);
+            uint32_t v_new_end  = static_cast<uint32_t>(startOfNewRing + next_i);
+
+            segment.push_back(glm::uvec3(v_prev_start, v_prev_second, v_new_end));
+            segment.push_back(glm::uvec3(v_prev_start, v_new_end, v_next_third));
+        }
+
+        hull.push_back(segment);
+        lastRingIdx++;
+    }
     return {hull, vertices};
 }
 
@@ -274,7 +314,16 @@ std::tuple<Hull, Vertices> generateHullGeometry(
  */
 void drawHullMesh(const Vertices& vertices, const Hull& hull, glm::vec4 color)
 {
-
+    glColor4fv(glm::value_ptr(color));
+    glBegin(GL_TRIANGLES);
+    for(const auto &segment : hull) {
+        for(const auto &face : segment) {
+            glVertex3fv(glm::value_ptr(vertices[face.x]));
+            glVertex3fv(glm::value_ptr(vertices[face.y]));
+            glVertex3fv(glm::value_ptr(vertices[face.z]));
+        }
+    }
+    glEnd();
 }
 
 /*
