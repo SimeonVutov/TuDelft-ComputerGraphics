@@ -15,10 +15,46 @@ DISABLE_WARNINGS_POP()
 #include <iostream>
 #include <limits>
 
-
+// This method is based on Barycentric Coordinates
+// We express p as the other vertices
+// p=v0+β*e0+γ*e1
+// equivalently to v = β*e0+γ*e1 where v = p - v0
 bool pointInTriangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& n, const glm::vec3& p)
 {
-    return false;
+    glm::vec3 e0 = v1 - v0;
+    glm::vec3 e1 = v2 - v0;
+    glm::vec3 v = p - v0;
+    
+    // We need to find beta and gamma
+    // Since we cannot devide by vectors we will project everything using dotProd
+    // So we just "multiply" by vector e0: v*e0 = β*(e0*e0) + γ*(e1*e0) 
+    // We do the same with e1
+    // Then we get two equation:
+    // d20 =  β*d00 + γ*d01
+    // d21 =  β*d01 + γ*d11
+
+    float d00 = glm::dot(e0, e0);
+    float d01 = glm::dot(e0, e1);
+    float d11 = glm::dot(e1, e1);
+    float d20 = glm::dot(v, e0);
+    float d21 = glm::dot(v, e1);
+    
+    // We solve the system using determinants
+    // We have the matrix d00 d01
+    //                    d01 d11 -> det = d00d11 - d01^2
+    //                  
+    float denom = d00 * d11 - d01 * d01;
+    
+    // if this determinant is than the triangle is degenerate -> all points lie on a line
+    if(denom <= 0.0f) {
+        return false;
+    }
+
+    //Now we use the Cramer rule to solve the system:
+    float beta = (d11 * d20 - d01 * d21) / denom;
+    float gamma = (d00 * d21 - d01 * d20) / denom;
+
+    return (beta >= 0.0f) && (gamma >= 0.0f) && (beta + gamma <= 1.0f);
 }
 
 bool intersectRayWithPlane(const Plane& plane, Ray& ray)
