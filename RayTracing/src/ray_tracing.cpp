@@ -93,6 +93,18 @@ Plane trianglePlane(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v
 /// Output: if ray intersects triangle defined by input vertices, then modify the hit parameter ray.t and return true, otherwise return false
 bool intersectRayWithTriangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, Ray& ray)
 {
+    Plane plane = trianglePlane(v0, v1, v2);
+    Ray temp = ray;
+
+    if(!intersectRayWithPlane(plane, temp)) return false;
+    
+    glm::vec3 hitPoint = temp.origin + temp.t * temp.direction;
+
+    if(pointInTriangle(v0, v1, v2, plane.normal, hitPoint) && temp.t < ray.t) {
+        ray.t = temp.t;
+        return true;
+    }
+
     return false;
 }
 
@@ -103,7 +115,23 @@ bool intersectRayWithTriangle(const glm::vec3& v0, const glm::vec3& v1, const gl
  */
 bool intersectRayWithGhosts(const std::span<Vertices> vertices, const std::span<Hull> hulls, Ray &ray) {
     bool hit = false;
+    
+    for(size_t i = 0; i < hulls.size(); i++) {
+        Hull &currentHull = hulls[i];
+        Vertices currentGhostVertices = vertices[i];
 
+        for(const auto &segment : currentHull) {
+            for(const auto &face : segment) {
+                glm::vec3 v0 = currentGhostVertices[face.x];
+                glm::vec3 v1 = currentGhostVertices[face.y];
+                glm::vec3 v2 = currentGhostVertices[face.z];
+
+                if(intersectRayWithTriangle(v0, v1, v2, ray)) {
+                    hit = true;
+                }
+            }
+        }
+    }
 
     return hit;
 }
