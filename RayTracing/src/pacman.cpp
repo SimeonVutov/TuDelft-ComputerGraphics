@@ -166,7 +166,7 @@ std::vector<glm::vec2> applyMovementInTime(std::span<const glm::vec2> polygon, s
     size_t numMotionSteps = motionSteps.size();
     glm::vec2 displacementVec {0.0f, 0.0f};
 
-    for(size_t i = 0; i <= std::min(fullSteps, numMotionSteps); i++) {
+    for(size_t i = 0; i < std::min(fullSteps, numMotionSteps); i++) {
         displacementVec += motionSteps[i];
     }
     
@@ -345,8 +345,27 @@ std::vector<Ray> generatePacmanRays (
     if (t >= (float) motionSteps.size()) { return {}; }
     std::vector<Ray> rays {};
 
+    size_t currentStepIdx = static_cast<size_t>(std::floor(t));
 
+    glm::vec2 currentPos = initialPosition;
+    for(size_t i = 0; i < currentStepIdx; i++) {
+        currentPos += motionSteps[i];
+    }
 
+    float fraction = t - static_cast<float>(currentStepIdx);
+    currentPos += fraction * motionSteps[currentStepIdx];
+    glm::vec3 rayDirection = glm::normalize(glm::vec3(motionSteps[currentStepIdx], -1.0f));
+
+    for(const auto &v : polygon) {
+        Ray ray;
+
+        glm::vec2 worldV = v + currentPos;
+        ray.origin = glm::vec3(worldV, -t);
+        ray.direction = rayDirection;
+        ray.t = std::numeric_limits<float>::max();
+
+        rays.push_back(ray);
+    }
 
     return rays;
 }
