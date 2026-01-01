@@ -27,6 +27,28 @@ std::vector<MazeTile> generateMaze(const glm::ivec2 mazeCenter, const Game::Maze
     assert(!maze.empty());
     const size_t mazeSizeX = maze[0].size();
 
+    float z = -time;
+    for(uint32_t y = 0; y < mazeSizeY; y++) {
+        for(uint32_t x = 0; x < mazeSizeX; x++) {
+            MazeTile tile;
+
+            float world_x = static_cast<float>(x) - static_cast<float>(mazeCenter.x);
+            float world_y = static_cast<float>(y) - static_cast<float>(mazeCenter.y);
+
+            tile.v1 = glm::vec3(world_x - 0.5f, world_y - 0.5f, z);
+            tile.v2 = glm::vec3(world_x + 0.5f, world_y - 0.5f, z);
+            tile.v3 = glm::vec3(world_x + 0.5f, world_y + 0.5f, z);
+            tile.v4 = glm::vec3(world_x - 0.5f, world_y + 0.5f, z);
+            
+            if(maze[y][x]) {
+                tile.color = color_filled_cell;
+            } else {
+                tile.color = color_empty_cell;
+            }
+
+            tiles.push_back(tile);
+        }
+    }
 
     return tiles;
 }
@@ -35,6 +57,16 @@ std::vector<MazeTile> generateMaze(const glm::ivec2 mazeCenter, const Game::Maze
  * Draw the maze of the previously generated maze tiles using GL_QUADS
 */
 void drawMaze(std::span<const MazeTile> tiles) {
+    glBegin(GL_QUADS);
+    for(const auto& tile : tiles) {
+        glColor4fv(glm::value_ptr(tile.color));
+
+        glVertex3fv(glm::value_ptr(tile.v1));
+        glVertex3fv(glm::value_ptr(tile.v2));
+        glVertex3fv(glm::value_ptr(tile.v3));
+        glVertex3fv(glm::value_ptr(tile.v4));
+    }
+    glEnd();
 }
 
 
@@ -50,7 +82,13 @@ std::vector<glm::vec2> generateCirclePoints(float radius, glm::vec2 center, size
 {
     std::vector<glm::vec2> points (numPoints);
 
+    for (size_t i = 0; i < numPoints; i++) {
+        float angle = glm::pi<float>() * 2.0f * static_cast<float>(i) / static_cast<float>(numPoints);
+        float x = std::cos(angle) * radius;
+        float y = std::sin(angle) * radius;
 
+        points[i] = glm::vec2(x, y) + center;
+    }
     return points;
 }
 
@@ -61,6 +99,13 @@ std::vector<glm::vec2> generateCirclePoints(float radius, glm::vec2 center, size
  */
 void drawPolygon(std::span<const glm::vec2> polygon, const float time, const glm::vec4& color)
 {
+    glColor4fv(glm::value_ptr(color));
+
+    glBegin(GL_POLYGON);
+    for(const auto& vertex : polygon) {
+        glVertex3f(vertex.x, vertex.y, -time);
+    }
+    glEnd();
 }
 
 /*
@@ -71,7 +116,13 @@ void drawPolygon(std::span<const glm::vec2> polygon, const float time, const glm
 void drawPolygonOutline(std::span<const glm::vec2> polygon, const float time, const glm::vec4& color)
 {
     glLineWidth(2);
-
+    
+    glBegin(GL_LINE_LOOP);
+    for(const auto& vertex : polygon) {
+        glColor4fv(glm::value_ptr(color));
+        glVertex3f(vertex.x, vertex.y, -time);
+    }
+    glEnd();
 }
 
 /*
@@ -87,7 +138,10 @@ std::vector<glm::vec2> applyInitialPosition(
 
     std::vector<glm::vec2> translatedPolygon;
     translatedPolygon.assign(polygon.begin(), polygon.end());
-
+    
+    for(size_t i = 0; i < polygon.size(); i++) {
+        translatedPolygon[i] = polygon[i] + initialPosition;
+    }
 
     return translatedPolygon;
 }
@@ -104,9 +158,29 @@ std::vector<glm::vec2> applyInitialPosition(
  */
 std::vector<glm::vec2> applyMovementInTime(std::span<const glm::vec2> polygon, std::span<const glm::vec2> motionSteps, const float t) {
 
-    std::vector<glm::vec2> translatedPolygon;
-    translatedPolygon.assign(polygon.begin(), polygon.end());
+    if(t <= 0.0f) {
+        return std::vector<glm::vec2>(polygon.begin(), polygon.end());
+    }
 
+    size_t fullSteps = static_cast<size_t>(std::floor(t));
+    size_t numMotionSteps = motionSteps.size();
+    glm::vec2 displacementVec {0.0f, 0.0f};
+
+    for(size_t i = 0; i < std::min(fullSteps, numMotionSteps); i++) {
+        displacementVec += motionSteps[i];
+    }
+    
+    if(fullSteps < motionSteps.size()) {
+        float fraction = t - static_cast<float>(fullSteps);
+        displacementVec += motionSteps[fullSteps] * fraction;
+    }
+
+    std::vector<glm::vec2> translatedPolygon;
+    translatedPolygon.reserve(polygon.size());
+
+    for(const auto &vertex : polygon) {
+        translatedPolygon.push_back(vertex + displacementVec);
+    }
 
     return translatedPolygon;
 }
@@ -186,9 +260,49 @@ std::tuple<Hull, Vertices> generateHullGeometry(
     Vertices vertices {};
 
     const size_t polygonN = polygon.size();
-    const size_t sequenceLength = motionSteps.size();
+    const size_t totalSteps = motionSteps.size();
+    
+    glm::vec2 currentPos = initialPosition;
+    for (const auto& v : polygon) {
+        vertices.push_back(glm::vec3(v + currentPos, 0.0f));
+    }
 
+    size_t currentStepIdx = 0;
+    size_t lastRingIdx = 0;
 
+    while(currentStepIdx < totalSteps) {
+        glm::vec2 direction = motionSteps[currentStepIdx];
+        size_t startRingIdx = currentStepIdx;
+
+        while(currentStepIdx < totalSteps && motionSteps[currentStepIdx] == direction) {
+            currentPos += direction;
+            currentStepIdx++;
+        }
+        
+        float timeAtEnd = static_cast<float>(currentStepIdx);
+        for (const auto &vertex : polygon) {
+            vertices.push_back(glm::vec3(vertex + currentPos, -timeAtEnd));
+        }
+        
+        HullSegment segment;
+        size_t startOfPrevRing = lastRingIdx * polygonN;
+        size_t startOfNewRing = (lastRingIdx + 1) * polygonN;
+
+        for (size_t i = 0; i < polygonN; ++i) {
+            size_t next_i = (i + 1) % polygonN;
+
+            uint32_t v_prev_start = static_cast<uint32_t>(startOfPrevRing + i);
+            uint32_t v_prev_second = static_cast<uint32_t>(startOfPrevRing + next_i);
+            uint32_t v_next_third  = static_cast<uint32_t>(startOfNewRing + i);
+            uint32_t v_new_end  = static_cast<uint32_t>(startOfNewRing + next_i);
+
+            segment.push_back(glm::uvec3(v_prev_start, v_prev_second, v_new_end));
+            segment.push_back(glm::uvec3(v_prev_start, v_new_end, v_next_third));
+        }
+
+        hull.push_back(segment);
+        lastRingIdx++;
+    }
     return {hull, vertices};
 }
 
@@ -200,7 +314,16 @@ std::tuple<Hull, Vertices> generateHullGeometry(
  */
 void drawHullMesh(const Vertices& vertices, const Hull& hull, glm::vec4 color)
 {
-
+    glColor4fv(glm::value_ptr(color));
+    glBegin(GL_TRIANGLES);
+    for(const auto &segment : hull) {
+        for(const auto &face : segment) {
+            glVertex3fv(glm::value_ptr(vertices[face.x]));
+            glVertex3fv(glm::value_ptr(vertices[face.y]));
+            glVertex3fv(glm::value_ptr(vertices[face.z]));
+        }
+    }
+    glEnd();
 }
 
 /*
@@ -222,8 +345,27 @@ std::vector<Ray> generatePacmanRays (
     if (t >= (float) motionSteps.size()) { return {}; }
     std::vector<Ray> rays {};
 
+    size_t currentStepIdx = static_cast<size_t>(std::floor(t));
 
+    glm::vec2 currentPos = initialPosition;
+    for(size_t i = 0; i < currentStepIdx; i++) {
+        currentPos += motionSteps[i];
+    }
 
+    float fraction = t - static_cast<float>(currentStepIdx);
+    currentPos += fraction * motionSteps[currentStepIdx];
+    glm::vec3 rayDirection = glm::normalize(glm::vec3(motionSteps[currentStepIdx], -1.0f));
+
+    for(const auto &v : polygon) {
+        Ray ray;
+
+        glm::vec2 worldV = v + currentPos;
+        ray.origin = glm::vec3(worldV, -t);
+        ray.direction = rayDirection;
+        ray.t = std::numeric_limits<float>::max();
+
+        rays.push_back(ray);
+    }
 
     return rays;
 }
